@@ -44,7 +44,7 @@ def test_chat_endpoint():
             json=data
         )
         
-        if response.statusCode == 200:
+        if response.status_code == 200:
             result = response.json()
             print("✅ Chat endpoint working!")
             print(f"Response: {result['response'][:100]}...")
@@ -72,7 +72,7 @@ def test_somali_chat():
             json=data
         )
         
-        if response.statusCode == 200:
+        if response.status_code == 200:
             result = response.json()
             print("✅ Somali chat working!")
             print(f"Response: {result['response'][:100]}...")

@@ -10,7 +10,7 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-# Configure OpenAI API
+# Configure OpenAI API - using older API for compatibility
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
 @app.route('/health', methods=['GET'])
@@ -22,6 +22,9 @@ def health_check():
 def chat():
     """Chat endpoint that integrates with OpenAI API"""
     try:
+        if not client:
+            return jsonify({'error': 'OpenAI API key not configured'}), 500
+            
         data = request.get_json()
         
         if not data or 'message' not in data:
@@ -39,7 +42,7 @@ def chat():
         system_prompt = system_prompts.get(language, system_prompts['en'])
         
         # Call OpenAI API
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {
@@ -65,11 +68,7 @@ def chat():
         else:
             return jsonify({'error': 'No response from OpenAI'}), 500
             
-    except openai.error.AuthenticationError:
-        return jsonify({'error': 'OpenAI API key is invalid'}), 401
-    except openai.error.RateLimitError:
-        return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
-    except openai.error.APIError as e:
+    except Exception as e:
         return jsonify({'error': f'OpenAI API error: {str(e)}'}), 500
     except Exception as e:
         return jsonify({'error': f'Server error: {str(e)}'}), 500
@@ -78,6 +77,9 @@ def chat():
 def chat_stream():
     """Streaming chat endpoint for real-time responses"""
     try:
+        if not client:
+            return jsonify({'error': 'OpenAI API key not configured'}), 500
+            
         data = request.get_json()
         
         if not data or 'message' not in data:
@@ -95,7 +97,7 @@ def chat_stream():
         system_prompt = system_prompts.get(language, system_prompts['en'])
         
         # Call OpenAI API with streaming
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {
