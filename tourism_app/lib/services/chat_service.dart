@@ -2,51 +2,32 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ChatService {
-  static const String _apiKey =
-      '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';
-  static const String _baseUrl =
-      'https://openrouter.ai/api/v1/chat/completions';
+  // Update this URL to match your Python backend
+  static const String _baseUrl = 'http://localhost:5000';
 
   static Future<String> sendMessage(String message, String language) async {
     try {
       final response = await http.post(
-        Uri.parse(_baseUrl),
+        Uri.parse('$_baseUrl/chat'),
         headers: {
-          'Authorization': 'Bearer $_apiKey',
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'http://localhost:5000',
-          'X-Title': 'Tourism App Chat Support',
         },
         body: jsonEncode({
-          'model': 'deepseek/deepseek-r1:free',
-          'messages': [
-            {
-              'role': 'system',
-              'content': language == 'en'
-                  ? 'You are a helpful tourism assistant for Somalia. Provide accurate and helpful information about tourist destinations, cultural sites, and travel tips in Somalia. Keep responses concise and friendly. do not respond any thing rather than tourism related questions.'
-                  : 'Waxaad tahay caawimaad dalxiis oo Soomaaliya ah. Siin macluumaad sax ah oo faahfaahsan oo ku saabsan meelaha dalxiiska, meelaha dhaqanka, iyo tilmaamaha safarka ee Soomaaliya. Jawaabaha aad bixiso ay noqdaan gaar ah oo saaxiib ah. haka jawaabin wax aan la xiriirin su’aalaha dalxiiska.',
-            },
-            {
-              'role': 'user',
-              'content': message,
-            },
-          ],
+          'message': message,
+          'language': language,
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['choices'] != null &&
-            data['choices'].isNotEmpty &&
-            data['choices'][0]['message'] != null) {
-          return data['choices'][0]['message']['content'];
+        if (data['response'] != null) {
+          return data['response'];
         } else {
           throw Exception('Invalid response format from API');
         }
       } else {
         final errorData = jsonDecode(response.body);
-        final errorMessage =
-            errorData['error']?['message'] ?? 'Unknown error occurred';
+        final errorMessage = errorData['error'] ?? 'Unknown error occurred';
         throw Exception(
             'API Error: $errorMessage (Status: ${response.statusCode})');
       }
@@ -56,6 +37,59 @@ class ChatService {
         throw e;
       }
       throw Exception('Failed to communicate with chat service: $e');
+    }
+  }
+
+  // Optional: Streaming chat method for real-time responses
+  static Stream<String> sendMessageStream(
+      String message, String language) async* {
+    try {
+      final request = http.Request(
+        'POST',
+        Uri.parse('$_baseUrl/chat/stream'),
+      );
+
+      request.headers['Content-Type'] = 'application/json';
+      request.body = jsonEncode({
+        'message': message,
+        'language': language,
+      });
+
+      final streamedResponse = await request.send();
+
+      if (streamedResponse.statusCode == 200) {
+        await for (final chunk
+            in streamedResponse.stream.transform(utf8.decoder)) {
+          final lines = chunk.split('\n');
+          for (final line in lines) {
+            if (line.startsWith('data: ')) {
+              final data = line.substring(6);
+              if (data == '[DONE]') {
+                return;
+              }
+              if (data.isNotEmpty) {
+                yield data;
+              }
+            }
+          }
+        }
+      } else {
+        throw Exception('Stream API Error: ${streamedResponse.statusCode}');
+      }
+    } catch (e) {
+      print('Stream Chat API Error: $e');
+      throw Exception('Failed to communicate with streaming chat service: $e');
+    }
+  }
+
+  // Health check method to verify backend connectivity
+  static Future<bool> checkBackendHealth() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/health'));
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Health check failed: $e');
+      return false;
     }
   }
 }
