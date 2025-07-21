@@ -22,9 +22,6 @@ def health_check():
 def chat():
     """Chat endpoint that integrates with OpenAI API"""
     try:
-        if not client:
-            return jsonify({'error': 'OpenAI API key not configured'}), 500
-            
         data = request.get_json()
         
         if not data or 'message' not in data:
@@ -42,7 +39,7 @@ def chat():
         system_prompt = system_prompts.get(language, system_prompts['en'])
         
         # Call OpenAI API
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
                 {
@@ -60,7 +57,7 @@ def chat():
         
         # Extract the response content
         if response.choices and len(response.choices) > 0:
-            assistant_message = response.choices[0].message.content
+            assistant_message = response.choices[0].message['content'] if isinstance(response.choices[0].message, dict) else response.choices[0].message.content
             return jsonify({
                 'response': assistant_message,
                 'status': 'success'
@@ -77,9 +74,6 @@ def chat():
 def chat_stream():
     """Streaming chat endpoint for real-time responses"""
     try:
-        if not client:
-            return jsonify({'error': 'OpenAI API key not configured'}), 500
-            
         data = request.get_json()
         
         if not data or 'message' not in data:
@@ -97,7 +91,7 @@ def chat_stream():
         system_prompt = system_prompts.get(language, system_prompts['en'])
         
         # Call OpenAI API with streaming
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
                 {
@@ -118,8 +112,10 @@ def chat_stream():
             for chunk in response:
                 if chunk.choices and len(chunk.choices) > 0:
                     delta = chunk.choices[0].delta
-                    if delta.content:
+                    if hasattr(delta, 'content') and delta.content:
                         yield f"data: {delta.content}\n\n"
+                    elif isinstance(delta, dict) and 'content' in delta:
+                        yield f"data: {delta['content']}\n\n"
             yield "data: [DONE]\n\n"
         
         return app.response_class(

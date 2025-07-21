@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ChatService {
-  // Update this URL to match your Python backend
-  static const String _baseUrl = 'http://localhost:5000';
+  // Use 10.0.2.2 for Android emulator to access host machine
+  static const String _baseUrl = 'http://10.1.1.33:5000';
 
   static Future<String> sendMessage(String message, String language) async {
     try {
