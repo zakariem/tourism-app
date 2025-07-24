@@ -354,7 +354,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
                                           user['username']
                                               .substring(0, 1)
                                               .toUpperCase(),
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                             color: AppColors.primary,
                                             fontSize: 48,
                                             fontWeight: FontWeight.bold,

@@ -1,10 +1,9 @@
 // lib/providers/auth_provider.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:tourism_app/services/database_helper.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 class AuthProvider with ChangeNotifier {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
   Map<String, dynamic>? _currentUser;
   bool _isLoading = false;
 
@@ -12,40 +11,34 @@ class AuthProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   Map<String, dynamic>? get currentUser => _currentUser;
 
-  Future<bool> checkAuthStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getInt('user_id');
+  static const String _baseUrl =
+      'http://localhost/9000/api/auth'; // Node.js backend
 
-    if (userId != null) {
-      final user = await _dbHelper.getUserById(userId);
-      if (user != null) {
-        _currentUser = user;
-        notifyListeners();
-        return true;
-      }
-    }
-    return false;
-  }
-
-  Future<bool> login(String username, String password) async {
+  Future<bool> login(String usernameOrEmail, String password) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      final user = await _dbHelper.getUserByUsername(username);
+      final response = await http.post(
+        Uri.parse('$_baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email':
+              usernameOrEmail, // or 'username': usernameOrEmail, depending on backend
+          'password': password,
+        }),
+      );
 
-      if (user != null && user['password'] == password) {
-        _currentUser = user;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setInt('user_id', user['id']);
+      if (response.statusCode == 200) {
+        _currentUser = jsonDecode(response.body);
         _isLoading = false;
         notifyListeners();
         return true;
+      } else {
+        _isLoading = false;
+        notifyListeners();
+        return false;
       }
-
-      _isLoading = false;
-      notifyListeners();
-      return false;
     } catch (e) {
       _isLoading = false;
       notifyListeners();
@@ -59,37 +52,27 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Check if username already exists
-      final existingUser = await _dbHelper.getUserByUsername(username);
-      if (existingUser != null) {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username,
+          'email': email,
+          'password': password,
+          'role': 'tourist', // or 'admin' if needed
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        _currentUser = jsonDecode(response.body);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
         _isLoading = false;
         notifyListeners();
         return false;
       }
-
-      // Create new user
-      final userId = await _dbHelper.insertUser({
-        'username': username,
-        'password': password,
-        'email': email,
-        'full_name': fullName,
-      });
-
-      if (userId > 0) {
-        final user = await _dbHelper.getUserById(userId);
-        if (user != null) {
-          _currentUser = user;
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setInt('user_id', userId);
-          _isLoading = false;
-          notifyListeners();
-          return true;
-        }
-      }
-
-      _isLoading = false;
-      notifyListeners();
-      return false;
     } catch (e) {
       _isLoading = false;
       notifyListeners();
@@ -99,40 +82,6 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> logout() async {
     _currentUser = null;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('user_id');
     notifyListeners();
-  }
-
-  Future<bool> updateProfile(String email, String fullName) async {
-    if (_currentUser == null) return false;
-
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      final success = await _dbHelper.updateUser(
-        _currentUser!['id'],
-        {
-          'email': email,
-          'full_name': fullName,
-        },
-      );
-
-      if (success) {
-        _currentUser = await _dbHelper.getUserById(_currentUser!['id']);
-        _isLoading = false;
-        notifyListeners();
-        return true;
-      }
-
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    } catch (e) {
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
   }
 }
