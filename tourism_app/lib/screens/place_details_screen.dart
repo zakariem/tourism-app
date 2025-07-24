@@ -4,8 +4,8 @@ import 'package:tourism_app/providers/language_provider.dart';
 import 'package:tourism_app/providers/auth_provider.dart';
 import 'package:tourism_app/services/database_helper.dart';
 import 'package:tourism_app/utils/app_colors.dart';
-import 'package:tourism_app/widgets/language_toggle.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+// import 'package:tourism_app/widgets/language_toggle.dart';
+// import 'package:cached_network_image/cached_network_image.dart';
 import 'package:tourism_app/providers/user_behavior_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
@@ -232,7 +232,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
     final description =
         isEnglish ? widget.place['desc_eng'] : widget.place['desc_som'];
     final category = widget.place['category'];
-    final imagePath = widget.place['image_path'];
+    // final imagePath = widget.place['image_path'];
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -284,11 +284,11 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                       // Share functionality
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Row(
+                          content: const Row(
                             children: [
-                              const Icon(Icons.share, color: Colors.white),
-                              const SizedBox(width: 12),
-                              const Text('Shared successfully!'),
+                              Icon(Icons.share, color: Colors.white),
+                              SizedBox(width: 12),
+                              Text('Shared successfully!'),
                             ],
                           ),
                           backgroundColor: Colors.green,

@@ -33,6 +33,7 @@ class _TFLiteTestWidgetState extends State<TFLiteTestWidget> {
       final scalerMean = List<double>.from(params['scaler_mean']);
       final scalerScale = List<double>.from(params['scaler_scale']);
       final labelClasses = List<String>.from(params['label_classes']);
+      // ignore: unused_local_variable
       final featureColumns = List<String>.from(params['feature_columns']);
 
       // Correct asset path: do not include 'assets/' prefix

@@ -21,7 +21,6 @@ void main() async {
 }
 
 
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -48,7 +47,7 @@ class MyApp extends StatelessWidget {
                 error: AppColors.error,
               ),
               useMaterial3: true,
-              appBarTheme: AppBarTheme(
+              appBarTheme: const AppBarTheme(
                 centerTitle: true,
                 elevation: 0,
                 backgroundColor: AppColors.surface,
@@ -64,7 +63,7 @@ class MyApp extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
-              textTheme: TextTheme(
+              textTheme: const TextTheme(
                 headlineLarge: TextStyle(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.bold,

@@ -86,7 +86,7 @@ class _FavoritesTabState extends State<FavoritesTab>
     final languageProvider = Provider.of<LanguageProvider>(context);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFF8F9FA),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
@@ -254,6 +254,7 @@ class _FavoritesTabState extends State<FavoritesTab>
         position: _slideAnimation,
         child: Container(
           height: 500,
+          color: const Color(0xFFF8F9FA),
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -290,9 +291,9 @@ class _FavoritesTabState extends State<FavoritesTab>
                   languageProvider.currentLanguage == 'en'
                       ? 'Start exploring and save your favorite places!'
                       : 'Bilow baahitaanka oo kaydi meelaha aad jeceshahay!',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
-                    color: Colors.grey[600],
+                    color: Colors.grey,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -310,6 +311,7 @@ class _FavoritesTabState extends State<FavoritesTab>
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.pink.shade400,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 32,
                       vertical: 16,
@@ -337,6 +339,7 @@ class _FavoritesTabState extends State<FavoritesTab>
         child: RefreshIndicator(
           onRefresh: _loadFavorites,
           color: Colors.pink.shade400,
+          backgroundColor: Colors.white,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
             child: Column(
@@ -351,6 +354,7 @@ class _FavoritesTabState extends State<FavoritesTab>
                   color: Colors.white,
                   child: Container(
                     decoration: BoxDecoration(
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
@@ -401,9 +405,9 @@ class _FavoritesTabState extends State<FavoritesTab>
                                           'en'
                                       ? 'Favorite Places'
                                       : 'Meelaha La Jecel Yahay',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 16,
-                                    color: Colors.grey[600],
+                                    color: Colors.grey,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -418,25 +422,33 @@ class _FavoritesTabState extends State<FavoritesTab>
 
                 const SizedBox(height: 24),
 
-                // Favorites Grid
-                GridView.builder(
+                // Favorites List (not grid for better mobile experience)
+                ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 1,
-                    childAspectRatio: 1.8,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                  ),
                   itemCount: _favorites.length,
                   itemBuilder: (context, index) {
                     final place = _favorites[index];
                     return AnimatedContainer(
                       duration: Duration(milliseconds: 300 + (index * 100)),
                       curve: Curves.easeOutBack,
-                      child: PlaceCard(
-                        place: place,
-                        onFavoriteChanged: () => _loadFavorites(),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: PlaceCard(
+                          place: place,
+                          onFavoriteChanged: () => _loadFavorites(),
+                        ),
                       ),
                     );
                   },

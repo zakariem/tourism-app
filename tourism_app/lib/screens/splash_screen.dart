@@ -28,6 +28,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    // ignore: unused_local_variable
     final languageProvider =
         Provider.of<LanguageProvider>(context, listen: false);
 

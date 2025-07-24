@@ -10,6 +10,7 @@ import 'package:tourism_app/widgets/language_toggle.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
+import 'package:tourism_app/utils/database_seeder.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({Key? key}) : super(key: key);
@@ -120,61 +121,39 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     }
   }
 
-  void _filterPlaces(String query) {
-    final languageProvider =
-        Provider.of<LanguageProvider>(context, listen: false);
-    final isEnglish = languageProvider.currentLanguage == 'en';
-    final nameColumn = isEnglish ? 'name_eng' : 'name_som';
-    final descColumn = isEnglish ? 'desc_eng' : 'desc_som';
+  void _maybeRecommend() async {
+    if (_isRecommending) return;
+    setState(() => _isRecommending = true);
+    final behavior = Provider.of<UserBehaviorProvider>(context, listen: false);
+    final recommendedCategory = await RecommendationService()
+        .getRecommendedCategory(behavior.featureVector);
+    if (recommendedCategory != null &&
+        recommendedCategory != _recommendedCategory) {
+      final dbHelper = DatabaseHelper();
+      final places = await dbHelper.getPlacesByCategory(recommendedCategory);
+      setState(() {
+        _recommendedCategory = recommendedCategory;
+        _recommendedPlaces = places;
+      });
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_recommended_category', recommendedCategory);
+    }
+    setState(() => _isRecommending = false);
+  }
 
+  void _onSearchChanged(String query) {
     setState(() {
       if (query.isEmpty) {
-        _filteredPlaces = _places.where((place) {
-          return _selectedCategory == 'all' ||
-              place['category'] == _selectedCategory;
-        }).toList();
+        _filteredPlaces = _places;
       } else {
         _filteredPlaces = _places.where((place) {
-          final matchesCategory = _selectedCategory == 'all' ||
-              place['category'] == _selectedCategory;
-          final matchesSearch = place[nameColumn]
-                  .toString()
-                  .toLowerCase()
-                  .contains(query.toLowerCase()) ||
-              place[descColumn]
-                  .toString()
-                  .toLowerCase()
-                  .contains(query.toLowerCase());
-          return matchesCategory && matchesSearch;
+          final name = place['name_eng']?.toLowerCase() ?? '';
+          final desc = place['desc_eng']?.toLowerCase() ?? '';
+          return name.contains(query.toLowerCase()) ||
+              desc.contains(query.toLowerCase());
         }).toList();
       }
     });
-  }
-
-  Future<void> _maybeRecommend() async {
-    final behavior = Provider.of<UserBehaviorProvider>(context, listen: false);
-    if ((behavior.beachClicks +
-            behavior.historicalClicks +
-            behavior.culturalClicks +
-            behavior.religiousClicks) >=
-        10) {
-      setState(() => _isRecommending = true);
-      final category = await RecommendationService()
-          .getRecommendedCategory(behavior.featureVector);
-      if (category != null) {
-        final dbHelper = DatabaseHelper();
-        final lowerCategory = category.toLowerCase();
-        final places = await dbHelper.getPlacesByCategory(lowerCategory);
-        setState(() {
-          _recommendedCategory = lowerCategory;
-          _recommendedPlaces = places;
-          _isRecommending = false;
-        });
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('last_recommended_category', lowerCategory);
-        behavior.reset();
-      }
-    }
   }
 
   @override
@@ -188,6 +167,22 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
         });
 
         return Scaffold(
+          appBar: AppBar(
+            title: Text(languageProvider.getText('home')),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.system_update_alt),
+                tooltip: languageProvider.currentLanguage == 'en'
+                    ? 'Update Places'
+                    : 'Cusbooneysii Goobaha',
+                onPressed: () async {
+                  await DatabaseSeeder.updateExistingPlaces();
+                  await _loadPlaces();
+                  setState(() {});
+                },
+              ),
+            ],
+          ),
           body: AnimatedBuilder(
             animation: _animationController,
             builder: (context, child) {
@@ -207,46 +202,39 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                         ],
                       ),
                     ),
-                    child: RefreshIndicator(
-                      onRefresh: _loadPlaces,
-                      color: AppColors.primary,
-                      child: CustomScrollView(
-                        controller: _scrollController,
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        slivers: [
-                          // Enhanced Hero Banner with Parallax
-                          SliverToBoxAdapter(
-                            child: _buildEnhancedHeroBanner(languageProvider),
-                          ),
+                    child: Column(
+                      children: [
+                        // Enhanced Hero Banner with Parallax
+                        SliverToBoxAdapter(
+                          child: _buildEnhancedHeroBanner(languageProvider),
+                        ),
 
-                          // Quick Stats Cards
-                          SliverToBoxAdapter(
-                            child: _buildQuickStatsCards(),
-                          ),
+                        // Quick Stats Cards
+                        SliverToBoxAdapter(
+                          child: _buildQuickStatsCards(),
+                        ),
 
-                          // Modern Search Bar
-                          SliverToBoxAdapter(
-                            child: _buildModernSearchBar(languageProvider),
-                          ),
+                        // Modern Search Bar
+                        SliverToBoxAdapter(
+                          child: _buildModernSearchBar(languageProvider),
+                        ),
 
-                          // Enhanced Category Chips
-                          SliverToBoxAdapter(
-                            child:
-                                _buildEnhancedCategoryChips(languageProvider),
-                          ),
+                        // Enhanced Category Chips
+                        SliverToBoxAdapter(
+                          child: _buildEnhancedCategoryChips(languageProvider),
+                        ),
 
-                          // Recommended Section
-                          if (_recommendedCategory != null &&
-                              _recommendedPlaces.isNotEmpty)
-                            _buildRecommendedSection(languageProvider),
+                        // Recommended Section
+                        if (_recommendedCategory != null &&
+                            _recommendedPlaces.isNotEmpty)
+                          _buildRecommendedSection(languageProvider),
 
-                          // Trending Places Section
-                          _buildTrendingSection(languageProvider),
+                        // Trending Places Section
+                        _buildTrendingSection(languageProvider),
 
-                          // All Places Section
-                          _buildAllPlacesSection(languageProvider),
-                        ],
-                      ),
+                        // All Places Section
+                        _buildAllPlacesSection(languageProvider),
+                      ],
                     ),
                   ),
                 ),
@@ -257,8 +245,6 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       },
     );
   }
-
-  // ... (keeping all the existing methods from the previous version)
 
   Widget _buildRecommendedSection(LanguageProvider languageProvider) {
     return SliverToBoxAdapter(
@@ -381,8 +367,6 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       ),
     );
   }
-
-  // ... (include all other methods from the previous version)
 
   Widget _buildEnhancedHeroBanner(LanguageProvider languageProvider) {
     return Container(
@@ -636,7 +620,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                     icon: Icon(Icons.clear, color: Colors.grey[500]),
                     onPressed: () {
                       _searchController.clear();
-                      _filterPlaces('');
+                      _onSearchChanged('');
                     },
                   )
                 : null,
@@ -644,7 +628,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
             contentPadding: const EdgeInsets.symmetric(vertical: 16),
           ),
           style: GoogleFonts.poppins(),
-          onChanged: _filterPlaces,
+          onChanged: _onSearchChanged,
         ),
       ),
     );
@@ -711,7 +695,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
         onSelected: (selected) {
           setState(() {
             _selectedCategory = selected ? category : 'all';
-            _filterPlaces(_searchController.text);
+            _onSearchChanged(_searchController.text);
           });
         },
         backgroundColor: Colors.white,

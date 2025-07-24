@@ -97,6 +97,73 @@ class DatabaseSeeder {
       },
     ];
 
+// final places = [
+//   {
+//     'name_eng': 'Abaaydhaxan',
+//     'name_som': 'Abaaydhaxan',
+//     'desc_eng': 'A historic settlement south of Mogadishu, known for its ancient architecture and ruined stone houses, including old mosques.',
+//     'desc_som': 'Degmo taariikhi ah oo koonfur ka xigta Muqdisho, caan ku ah dhismayaal qadiimi ah iyo guryo dhagax ah oo masajidadooduna ay burbureen.',
+//     'location': 'Near Mogadishu, Banaadir, Somalia',
+//     'category': 'historical',
+//   },
+//   {
+//     'name_eng': 'Nimow',
+//     'name_som': 'Nimow',
+//     'desc_eng': 'A small historical town about 30 km south‑east of Mogadishu, featuring ruins of stone houses and mosques, once home to Islamic scholars.',
+//     'desc_som': 'Magaalo yar oo taariikhi ah, qiyaastii 30 km koonfur‑bari ka xigta Muqdisho, leh guryo dhagax ah oo burburay iyo masaajid, markii horena waxaa degan jiray culimo.',
+//     'location': 'Near Mogadishu, Banaadir, Somalia',
+//     'category': 'historical',
+//   },
+//   {
+//     'name_eng': 'Warsheikh',
+//     'name_som': 'Warshiikh',
+//     'desc_eng': 'A coastal town about 70 km north of Mogadishu, once a major settlement in the Sultanate of Mogadishu and home to historic mosques and colonial buildings.',
+//     'desc_som': 'Magaalo xeebeed qiyaastii 70 km waqooyi kaga beegan Muqdisho, ahayd xarun muhiim ah xilligii Boqortooyadii Muqdisho, leh masaajido taariikhi ah iyo dhismayaal taariikhi ah.',
+//     'location': 'Warsheikh, Middle Shabelle, Somalia',
+//     'category': 'cultural',
+//   },
+//   {
+//     'name_eng': 'Beerta Nabada',
+//     'name_som': 'Beerta Nabada',
+//     'desc_eng': 'A public park in Mogadishu (also called “Warta Nabada”), popular among locals for relaxation and recreation in the capital.',
+//     'desc_som': 'Beertii dadweynaha ee Muqdisho (loo yaqaan “Warta Nabada”), oo caan ku ah madadaalo iyo nasasho bulshooyinka deegaanka magaalada.',
+//     'location': 'Mogadishu, Banaadir, Somalia',
+//     'category': 'urban park',
+//   },
+//   {
+//     'name_eng': 'Beerta Xamar',
+//     'name_som': 'Beerta Xamar',
+//     'desc_eng': 'A recreational green space in Xamar Weyne district of Mogadishu, often used by locals for leisure, picnics, and evening strolls.',
+//     'desc_som': 'Goob cagaaran oo madadaalo ah oo ku taalla degmada Xamar Weyne ee Muqdisho, dadka deegaanka badanaa waxay u adeegsadaan nasasho, picnic, iyo socod habeenkii.',
+//     'location': 'Mogadishu, Banaadir, Somalia',
+//     'category': 'urban park',
+//   },
+//   {
+//     'name_eng': 'Beerta Banadir',
+//     'name_som': 'Beerta Banaadir',
+//     'desc_eng': 'Another central park in Mogadishu often associated with the Banaadir Market area, serving as a local gathering and leisure spot.',
+//     'desc_som': 'Beerta kale ee bartamaha Muqdisho oo inta badan lala xiriiriyo aagga Suuqa Banaadir, waxay u tahay bulshada deegaanka meel isugu yimaadaan oo madadaalo ah.',
+//     'location': 'Mogadishu, Banaadir, Somalia',
+//     'category': 'urban park',
+//   },
+//   {
+//     'name_eng': 'Xeebta Jaziira (Jaziira Beach)',
+//     'name_som': 'Xeebta Jaziira',
+//     'desc_eng': 'Jazeera (Gezira) Beach near Mogadishu, a leisure destination where locals gather, featuring a small island reachable by boat and nearby animal market and salt-mining.',
+//     'desc_som': 'Xeebta Jasiira oo ku dhow Muqdisho, ah meel nasasho oo dadku isugu yimaadaan, leh jasiirad yar oo la tegi karo dooni, suuqa xoolaha iyo macdanta milixda agteeda.',
+//     'location': 'Mogadishu, Banaadir, Somalia',
+//     'category': 'beach',
+//   },
+//   {
+//     'name_eng': 'Laydy Dayniile (Dayniile)',
+//     'name_som': 'Dayniile',
+//     'desc_eng': 'A suburban district of Mogadishu, known for its proximity to coastal and desert landscapes; visitors often pass through or stay when exploring outlying areas.',
+//     'desc_som': 'Degmo ka tirsan Muqdisho, caan ku ah meelaha xeebaha iyo lamadega ah ee agteeda; booqdayaashu waxay marsiiyaan ama ku nagaanayaan markay meelaha agagaarka ah baaraan.',
+//     'location': 'Dayniile, Mogadishu, Banaadir, Somalia',
+//     'category': 'suburb',
+//   },
+// ];
+
     int newPlacesCount = 0;
     int skippedPlacesCount = 0;
 
