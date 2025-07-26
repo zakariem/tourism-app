@@ -73,12 +73,24 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
     _enterTime = DateTime.now();
     // Initialize image gallery with the place's image and related images
     _imageGallery = _getPlaceImages(widget.place['image_path']);
+    print('Place: ${widget.place['name_eng']}');
+    print('Original image path: ${widget.place['image_path']}');
+    print('Image gallery: $_imageGallery');
+
+    // Test if the main image exists
+    _testImageExists(widget.place['image_path']);
+
     _checkFavoriteStatus();
     _setupAnimations();
   }
 
   List<String> _getPlaceImages(String mainImagePath) {
-    List<String> images = [mainImagePath];
+    // Ensure the main image path has the correct asset prefix
+    String fullMainPath = mainImagePath.startsWith('assets/')
+        ? mainImagePath
+        : 'assets/places/$mainImagePath';
+
+    List<String> images = [fullMainPath];
 
     // Try to find related images for the same place
     String baseName = mainImagePath.split('.').first;
@@ -97,7 +109,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
 
     // If we don't have enough images, add some fallback images
     while (images.length < 3) {
-      images.add(mainImagePath); // Repeat the main image
+      images.add(fullMainPath); // Repeat the main image
     }
 
     return images;
@@ -107,16 +119,49 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
     // This is a simple check - in a real app you might want to check file existence
     // For now, we'll assume common variations exist
     String path = imagePath.toLowerCase();
-    return path.contains('liido') ||
-        path.contains('jimcale') ||
-        path.contains('nimow') ||
-        path.contains('warshiikh') ||
-        path.contains('jaziira') ||
-        path.contains('berbera') ||
-        path.contains('hargeisa') ||
-        path.contains('laas_geel') ||
-        path.contains('national_museum') ||
-        path.contains('sheikh_sufi');
+
+    // Check for known image variations that exist in assets
+    if (path.contains('liido')) {
+      return path.contains('liido.jpg') ||
+          path.contains('liido2.png') ||
+          path.contains('liido3.png') ||
+          path.contains('liido4.png');
+    }
+    if (path.contains('jimcale')) {
+      return path.contains('jimcale-1.png') ||
+          path.contains('jimcale-2.png') ||
+          path.contains('jimcale-3.png');
+    }
+    if (path.contains('nimow')) {
+      return path.contains('nimow.png') || path.contains('nimow-2.png');
+    }
+    if (path.contains('warshiikh')) {
+      return path.contains('warshiikh.png') || path.contains('warshiikh-2.png');
+    }
+    if (path.contains('jaziira')) {
+      return path.contains('jaziira.png') || path.contains('jaziira-2.png');
+    }
+
+    // For other images, just check if the main image exists
+    return path.contains('berbera_beach.jpg') ||
+        path.contains('hargeisa_cultural.jpg') ||
+        path.contains('laas_geel.jpg') ||
+        path.contains('national_museum.jpg') ||
+        path.contains('sheikh_sufi.jpg') ||
+        path.contains('arbaa_rukun.jpg') ||
+        path.contains('abaaydhaxan.png') ||
+        path.contains('beerta-nabada.png') ||
+        path.contains('beerta-xamar.png') ||
+        path.contains('beerta-banadir.png') ||
+        path.contains('dayniile.png');
+  }
+
+  void _testImageExists(String imagePath) {
+    String fullPath = imagePath.startsWith('assets/')
+        ? imagePath
+        : 'assets/places/$imagePath';
+    print('Testing image path: $fullPath');
+    // This will help us debug which images are actually loading
   }
 
   void _setupAnimations() {
@@ -244,6 +289,8 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                       _imageGallery[index],
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) {
+                        print(
+                            'Fullscreen image error for ${_imageGallery[index]}: $error');
                         return Container(
                           color: Colors.black,
                           child: Center(
@@ -257,11 +304,12 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  'Image not found',
+                                  'Image not found\n${_imageGallery[index]}',
                                   style: GoogleFonts.poppins(
                                     color: Colors.white,
                                     fontSize: 16,
                                   ),
+                                  textAlign: TextAlign.center,
                                 ),
                               ],
                             ),
@@ -428,6 +476,8 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                             _imageGallery[index],
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
+                              print(
+                                  'Image error for ${_imageGallery[index]}: $error');
                               return Container(
                                 color: Colors.grey[200],
                                 child: Center(
@@ -441,11 +491,12 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
-                                        'Image not found',
+                                        'Image not found\n${_imageGallery[index]}',
                                         style: GoogleFonts.poppins(
                                           color: Colors.grey[500],
                                           fontSize: 12,
                                         ),
+                                        textAlign: TextAlign.center,
                                       ),
                                     ],
                                   ),
