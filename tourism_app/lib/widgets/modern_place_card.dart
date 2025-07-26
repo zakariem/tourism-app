@@ -57,13 +57,17 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
 
   Future<void> _checkFavoriteStatus() async {
     final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
-    if (user != null) {
-      final isFavorite = await _dbHelper.isPlaceFavorite(
-        user['id'],
-        widget.place['id'],
-      );
-      if (mounted) {
-        setState(() => _isFavorite = isFavorite);
+    if (user != null && user['_id'] != null) {
+      try {
+        final isFavorite = await _dbHelper.isPlaceFavorite(
+          user['_id'],
+          widget.place['id'],
+        );
+        if (mounted) {
+          setState(() => _isFavorite = isFavorite);
+        }
+      } catch (e) {
+        print('Error checking favorite status: $e');
       }
     }
   }
@@ -74,12 +78,12 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
     setState(() => _isLoading = true);
 
     final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
-    if (user != null) {
+    if (user != null && user['_id'] != null) {
       try {
         if (_isFavorite) {
-          await _dbHelper.removeFromFavorites(user['id'], widget.place['id']);
+          await _dbHelper.removeFromFavorites(user['_id'], widget.place['id']);
         } else {
-          await _dbHelper.addToFavorites(user['id'], widget.place['id']);
+          await _dbHelper.addToFavorites(user['_id'], widget.place['id']);
         }
 
         if (mounted) {
@@ -90,9 +94,14 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
           widget.onFavoriteChanged?.call();
         }
       } catch (e) {
+        print('Error toggling favorite: $e');
         if (mounted) {
           setState(() => _isLoading = false);
         }
+      }
+    } else {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }

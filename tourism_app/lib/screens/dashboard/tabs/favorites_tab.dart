@@ -66,16 +66,21 @@ class _FavoritesTabState extends State<FavoritesTab>
     setState(() => _isLoading = true);
 
     final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
-    if (user != null) {
-      final favorites = await _dbHelper.getFavoritePlaces(user['id']);
-      setState(() {
-        _favorites = favorites;
-        _isLoading = false;
-      });
-
-      // Start animations after loading
-      _fadeController.forward();
-      _slideController.forward();
+    if (user != null && user['_id'] != null) {
+      try {
+        final favorites = await _dbHelper.getFavoritePlaces(user['_id']);
+        if (mounted) {
+          setState(() {
+            _favorites = favorites;
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        print('Error loading favorites: $e');
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
     } else {
       setState(() => _isLoading = false);
     }

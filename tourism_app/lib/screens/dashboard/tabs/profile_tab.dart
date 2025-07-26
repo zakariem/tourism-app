@@ -428,6 +428,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
                     Container(
                       margin: const EdgeInsets.only(right: 16),
                       decoration: BoxDecoration(
+                        // ignore: deprecated_member_use
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -529,6 +530,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
+              // ignore: deprecated_member_use
               color: Colors.black.withOpacity(0.05),
               blurRadius: 20,
               offset: const Offset(0, 10),
@@ -545,7 +547,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
               children: [
                 Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.person,
                       color: AppColors.primary,
                       size: 24,
@@ -691,6 +693,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
+                  // ignore: deprecated_member_use
                   color: iconColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -752,6 +755,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
             gradient: LinearGradient(
               colors: [
                 Colors.red.shade50,
+                // ignore: deprecated_member_use
                 Colors.red.shade100.withOpacity(0.3),
               ],
               begin: Alignment.topLeft,
@@ -764,6 +768,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
+                  // ignore: deprecated_member_use
                   color: Colors.red.shade400.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -825,6 +830,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
         boxShadow: enabled
             ? [
                 BoxShadow(
+                  // ignore: deprecated_member_use
                   color: Colors.black.withOpacity(0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
@@ -844,6 +850,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
           labelText: label,
           labelStyle: TextStyle(
             color:
+                // ignore: deprecated_member_use
                 enabled ? AppColors.primary.withOpacity(0.8) : Colors.grey[500],
             fontSize: 14,
           ),
@@ -870,7 +877,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(
+            borderSide: const BorderSide(
               color: AppColors.primary,
               width: 2,
             ),

@@ -32,12 +32,15 @@ class _SplashScreenState extends State<SplashScreen> {
     final languageProvider =
         Provider.of<LanguageProvider>(context, listen: false);
 
+    print('Checking authentication status...');
     // Check if user is logged in
     final isLoggedIn = await authProvider.checkAuthStatus();
+    print('Authentication check result: $isLoggedIn');
 
     if (!mounted) return;
 
     // Navigate to appropriate screen
+    print('Navigating to: ${isLoggedIn ? 'Dashboard' : 'Login'}');
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (context) =>

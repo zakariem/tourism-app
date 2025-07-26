@@ -13,7 +13,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -48,32 +49,68 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
   Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
+      print('Form validated, attempting login...');
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.login(
-        _usernameController.text.trim(),
-        _passwordController.text,
-      );
 
-      if (success && mounted) {
-        Navigator.pushReplacementNamed(context, '/dashboard');
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 12),
-                Text(
-                  Provider.of<LanguageProvider>(context, listen: false)
-                      .getText('login_failed'),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
+      try {
+        final success = await authProvider.login(
+          _usernameController.text.trim(),
+          _passwordController.text,
         );
+
+        print('Login result: $success');
+        print('Widget mounted: $mounted');
+
+        if (!mounted) {
+          print('Widget no longer mounted, skipping navigation');
+          return;
+        }
+
+        if (success) {
+          print('Login successful, navigating to dashboard...');
+          // Add a small delay to ensure state is updated
+          await Future.delayed(const Duration(milliseconds: 100));
+
+          if (mounted) {
+            print('About to navigate to dashboard...');
+            Navigator.pushReplacementNamed(context, '/dashboard');
+            print('Navigation command executed');
+          } else {
+            print('Widget not mounted, cannot navigate');
+          }
+        } else {
+          print('Login failed, showing error message');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.error, color: Colors.white),
+                    const SizedBox(width: 12),
+                    Text(
+                      Provider.of<LanguageProvider>(context, listen: false)
+                          .getText('login_failed'),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        print('Login error in UI: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Login error: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -170,7 +207,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 child: Form(
                                   key: _formKey,
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
                                     children: [
                                       Text(
                                         'Welcome Back!',
@@ -185,7 +223,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                       // Username Field
                                       _buildModernTextField(
                                         controller: _usernameController,
-                                        label: languageProvider.getText('username'),
+                                        label: languageProvider
+                                            .getText('username'),
                                         icon: Icons.person_outline,
                                         validator: (value) {
                                           if (value == null || value.isEmpty) {
@@ -199,7 +238,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                       // Password Field
                                       _buildModernTextField(
                                         controller: _passwordController,
-                                        label: languageProvider.getText('password'),
+                                        label: languageProvider
+                                            .getText('password'),
                                         icon: Icons.lock_outline,
                                         obscureText: _obscurePassword,
                                         suffixIcon: IconButton(
@@ -211,7 +251,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                           ),
                                           onPressed: () {
                                             setState(() {
-                                              _obscurePassword = !_obscurePassword;
+                                              _obscurePassword =
+                                                  !_obscurePassword;
                                             });
                                           },
                                         ),
@@ -231,38 +272,46 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                           gradient: LinearGradient(
                                             colors: [
                                               AppColors.primary,
-                                              AppColors.primary.withOpacity(0.8),
+                                              AppColors.primary
+                                                  .withOpacity(0.8),
                                             ],
                                           ),
-                                          borderRadius: BorderRadius.circular(16),
+                                          borderRadius:
+                                              BorderRadius.circular(16),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: AppColors.primary.withOpacity(0.3),
+                                              color: AppColors.primary
+                                                  .withOpacity(0.3),
                                               blurRadius: 20,
                                               offset: const Offset(0, 10),
                                             ),
                                           ],
                                         ),
                                         child: ElevatedButton(
-                                          onPressed: authProvider.isLoading ? null : _login,
+                                          onPressed: authProvider.isLoading
+                                              ? null
+                                              : _login,
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.transparent,
                                             shadowColor: Colors.transparent,
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(16),
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
                                             ),
                                           ),
                                           child: authProvider.isLoading
                                               ? const SizedBox(
                                                   height: 24,
                                                   width: 24,
-                                                  child: CircularProgressIndicator(
+                                                  child:
+                                                      CircularProgressIndicator(
                                                     color: Colors.white,
                                                     strokeWidth: 3,
                                                   ),
                                                 )
                                               : Text(
-                                                  languageProvider.getText('login'),
+                                                  languageProvider
+                                                      .getText('login'),
                                                   style: GoogleFonts.poppins(
                                                     fontSize: 16,
                                                     fontWeight: FontWeight.w600,
@@ -285,14 +334,16 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               child: RichText(
                                 textAlign: TextAlign.center,
                                 text: TextSpan(
-                                  text: '${languageProvider.getText('dont_have_account')} ',
+                                  text:
+                                      '${languageProvider.getText('dont_have_account')} ',
                                   style: GoogleFonts.poppins(
                                     fontSize: 14,
                                     color: Colors.grey[600],
                                   ),
                                   children: [
                                     TextSpan(
-                                      text: languageProvider.getText('register'),
+                                      text:
+                                          languageProvider.getText('register'),
                                       style: GoogleFonts.poppins(
                                         color: AppColors.primary,
                                         fontWeight: FontWeight.bold,
@@ -350,7 +401,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: Colors.red),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         labelStyle: GoogleFonts.poppins(color: Colors.grey[600]),
       ),
       style: GoogleFonts.poppins(),

@@ -166,81 +166,64 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           _maybeRecommend();
         });
 
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(languageProvider.getText('home')),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.system_update_alt),
-                tooltip: languageProvider.currentLanguage == 'en'
-                    ? 'Update Places'
-                    : 'Cusbooneysii Goobaha',
-                onPressed: () async {
-                  await DatabaseSeeder.updateExistingPlaces();
-                  await _loadPlaces();
-                  setState(() {});
-                },
-              ),
-            ],
-          ),
-          body: AnimatedBuilder(
-            animation: _animationController,
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(0, _slideAnimation.value),
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppColors.primary.withOpacity(0.05),
-                          Colors.white,
-                          AppColors.primary.withOpacity(0.02),
-                        ],
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        // Enhanced Hero Banner with Parallax
-                        SliverToBoxAdapter(
-                          child: _buildEnhancedHeroBanner(languageProvider),
-                        ),
-
-                        // Quick Stats Cards
-                        SliverToBoxAdapter(
-                          child: _buildQuickStatsCards(),
-                        ),
-
-                        // Modern Search Bar
-                        SliverToBoxAdapter(
-                          child: _buildModernSearchBar(languageProvider),
-                        ),
-
-                        // Enhanced Category Chips
-                        SliverToBoxAdapter(
-                          child: _buildEnhancedCategoryChips(languageProvider),
-                        ),
-
-                        // Recommended Section
-                        if (_recommendedCategory != null &&
-                            _recommendedPlaces.isNotEmpty)
-                          _buildRecommendedSection(languageProvider),
-
-                        // Trending Places Section
-                        _buildTrendingSection(languageProvider),
-
-                        // All Places Section
-                        _buildAllPlacesSection(languageProvider),
+        return AnimatedBuilder(
+          animation: _animationController,
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(0, _slideAnimation.value),
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.primary.withOpacity(0.05),
+                        Colors.white,
+                        AppColors.primary.withOpacity(0.02),
                       ],
                     ),
                   ),
+                  child: CustomScrollView(
+                    controller: _scrollController,
+                    slivers: [
+                      // Enhanced Hero Banner with Parallax
+                      SliverToBoxAdapter(
+                        child: _buildEnhancedHeroBanner(languageProvider),
+                      ),
+
+                      // Quick Stats Cards
+                      SliverToBoxAdapter(
+                        child: _buildQuickStatsCards(),
+                      ),
+
+                      // Modern Search Bar
+                      SliverToBoxAdapter(
+                        child: _buildModernSearchBar(languageProvider),
+                      ),
+
+                      // Enhanced Category Chips
+                      SliverToBoxAdapter(
+                        child: _buildEnhancedCategoryChips(languageProvider),
+                      ),
+
+                      // Recommended Section
+                      if (_recommendedCategory != null &&
+                          _recommendedPlaces.isNotEmpty)
+                        _buildRecommendedSection(languageProvider),
+
+                      // Trending Places Section
+                      _buildTrendingSection(languageProvider),
+
+                      // All Places Section
+                      _buildAllPlacesSection(languageProvider),
+                    ],
+                  ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         );
       },
     );

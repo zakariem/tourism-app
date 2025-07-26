@@ -37,36 +37,52 @@ class _PlaceCardState extends State<PlaceCard> {
 
   Future<void> _checkFavoriteStatus() async {
     final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
-    if (user != null) {
-      final isFavorite = await _dbHelper.isPlaceFavorite(
-        user['id'],
-        widget.place['id'],
-      );
-      setState(() {
-        _isFavorite = isFavorite;
-        _isLoading = false;
-      });
-    } else {
-      setState(() => _isLoading = false);
+    if (user != null && user['_id'] != null) {
+      try {
+        final isFavorite = await _dbHelper.isPlaceFavorite(
+          user['_id'],
+          widget.place['id'],
+        );
+        if (mounted) {
+          setState(() => _isFavorite = isFavorite);
+        }
+      } catch (e) {
+        print('Error checking favorite status: $e');
+      }
     }
   }
 
   Future<void> _toggleFavorite() async {
-    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
-    if (user == null) return;
+    if (_isLoading) return;
 
     setState(() => _isLoading = true);
 
-    try {
-      if (_isFavorite) {
-        await _dbHelper.removeFromFavorites(user['id'], widget.place['id']);
-      } else {
-        await _dbHelper.addToFavorites(user['id'], widget.place['id']);
+    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
+    if (user != null && user['_id'] != null) {
+      try {
+        if (_isFavorite) {
+          await _dbHelper.removeFromFavorites(user['_id'], widget.place['id']);
+        } else {
+          await _dbHelper.addToFavorites(user['_id'], widget.place['id']);
+        }
+
+        if (mounted) {
+          setState(() {
+            _isFavorite = !_isFavorite;
+            _isLoading = false;
+          });
+          widget.onFavoriteChanged.call();
+        }
+      } catch (e) {
+        print('Error toggling favorite: $e');
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
       }
-      setState(() => _isFavorite = !_isFavorite);
-      widget.onFavoriteChanged();
-    } finally {
-      setState(() => _isLoading = false);
+    } else {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

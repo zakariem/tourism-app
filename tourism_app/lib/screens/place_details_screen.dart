@@ -28,6 +28,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
   final PageController _imagePageController = PageController();
 
   bool _isFavorite = false;
+  bool _isLoading = false; // Added missing variable
   late DateTime _enterTime;
   UserBehaviorProvider? _userBehaviorProvider;
   int _currentImageIndex = 0;
@@ -40,11 +41,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
   late Animation<double> _fabSlideAnimation;
 
   // Mock data for enhanced features
-  final List<String> _imageGallery = [
-    'assets/places/liido.jpg',
-    'assets/places/liido.jpg',
-    'assets/places/liido.jpg',
-  ];
+  late List<String> _imageGallery;
 
   final List<Map<String, dynamic>> _reviews = [
     {
@@ -74,8 +71,52 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
   void initState() {
     super.initState();
     _enterTime = DateTime.now();
+    // Initialize image gallery with the place's image and related images
+    _imageGallery = _getPlaceImages(widget.place['image_path']);
     _checkFavoriteStatus();
     _setupAnimations();
+  }
+
+  List<String> _getPlaceImages(String mainImagePath) {
+    List<String> images = [mainImagePath];
+
+    // Try to find related images for the same place
+    String baseName = mainImagePath.split('.').first;
+
+    // Check for numbered variations with different extensions
+    List<String> extensions = ['.png', '.jpg', '.jpeg'];
+    for (int i = 2; i <= 4; i++) {
+      for (String ext in extensions) {
+        String variation = 'assets/places/${baseName}$i$ext';
+        if (_imageExists(variation)) {
+          images.add(variation);
+          break; // Found one variation, move to next number
+        }
+      }
+    }
+
+    // If we don't have enough images, add some fallback images
+    while (images.length < 3) {
+      images.add(mainImagePath); // Repeat the main image
+    }
+
+    return images;
+  }
+
+  bool _imageExists(String imagePath) {
+    // This is a simple check - in a real app you might want to check file existence
+    // For now, we'll assume common variations exist
+    String path = imagePath.toLowerCase();
+    return path.contains('liido') ||
+        path.contains('jimcale') ||
+        path.contains('nimow') ||
+        path.contains('warshiikh') ||
+        path.contains('jaziira') ||
+        path.contains('berbera') ||
+        path.contains('hargeisa') ||
+        path.contains('laas_geel') ||
+        path.contains('national_museum') ||
+        path.contains('sheikh_sufi');
   }
 
   void _setupAnimations() {
@@ -134,31 +175,50 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
 
   Future<void> _checkFavoriteStatus() async {
     final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
-    if (user != null) {
-      final isFavorite = await _dbHelper.isPlaceFavorite(
-        user['id'],
-        widget.place['id'],
-      );
-      if (mounted) {
-        setState(() => _isFavorite = isFavorite);
+    if (user != null && user['_id'] != null) {
+      try {
+        final isFavorite = await _dbHelper.isPlaceFavorite(
+          user['_id'],
+          widget.place['id'],
+        );
+        if (mounted) {
+          setState(() => _isFavorite = isFavorite);
+        }
+      } catch (e) {
+        print('Error checking favorite status: $e');
       }
     }
   }
 
   Future<void> _toggleFavorite() async {
-    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
-    if (user != null) {
-      _favoriteAnimationController.forward().then((_) {
-        _favoriteAnimationController.reverse();
-      });
+    if (_isLoading) return;
 
-      if (_isFavorite) {
-        await _dbHelper.removeFromFavorites(user['id'], widget.place['id']);
-      } else {
-        await _dbHelper.addToFavorites(user['id'], widget.place['id']);
+    setState(() => _isLoading = true);
+
+    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
+    if (user != null && user['_id'] != null) {
+      try {
+        if (_isFavorite) {
+          await _dbHelper.removeFromFavorites(user['_id'], widget.place['id']);
+        } else {
+          await _dbHelper.addToFavorites(user['_id'], widget.place['id']);
+        }
+
+        if (mounted) {
+          setState(() {
+            _isFavorite = !_isFavorite;
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        print('Error toggling favorite: $e');
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
       }
+    } else {
       if (mounted) {
-        setState(() => _isFavorite = !_isFavorite);
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -183,6 +243,31 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                     child: Image.asset(
                       _imageGallery[index],
                       fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.black,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.image_not_supported,
+                                  color: Colors.white,
+                                  size: 60,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Image not found',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 );
@@ -342,6 +427,31 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                           return Image.asset(
                             _imageGallery[index],
                             fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey[200],
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.image_not_supported,
+                                        color: Colors.grey[400],
+                                        size: 40,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Image not found',
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.grey[500],
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),
