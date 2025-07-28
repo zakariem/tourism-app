@@ -59,6 +59,8 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final languageProvider = Provider.of<LanguageProvider>(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
     
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -174,32 +176,42 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
               
               // Content
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // App Info Card
-                      _buildAppInfoCard(languageProvider),
-                      
-                      const SizedBox(height: 24),
-                      
-                      // About App Section
-                      _buildAboutSection(languageProvider),
-                      
-                      const SizedBox(height: 24),
-                      
-                      // Features Section
-                      _buildFeaturesSection(languageProvider),
-                      
-                      const SizedBox(height: 24),
-                      
-                      // Developer Team Section
-                      _buildDeveloperSection(languageProvider),
-                      
-                      const SizedBox(height: 40),
-                    ],
-                  ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final maxWidth = isTablet ? 800.0 : double.infinity;
+                    final horizontalPadding = isTablet ? 40.0 : 20.0;
+                    
+                    return Center(
+                      child: Container(
+                        constraints: BoxConstraints(maxWidth: maxWidth),
+                        padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // App Info Card
+                            _buildAppInfoCard(languageProvider, isTablet),
+                            
+                            SizedBox(height: isTablet ? 32 : 24),
+                            
+                            // About App Section
+                            _buildAboutSection(languageProvider, isTablet),
+                            
+                            SizedBox(height: isTablet ? 32 : 24),
+                            
+                            // Features Section
+                            _buildFeaturesSection(languageProvider, isTablet),
+                            
+                            SizedBox(height: isTablet ? 32 : 24),
+                            
+                            // Developer Team Section
+                            _buildDeveloperSection(languageProvider, isTablet),
+                            
+                            SizedBox(height: isTablet ? 60 : 40),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -209,7 +221,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildAppInfoCard(LanguageProvider languageProvider) {
+  Widget _buildAppInfoCard(LanguageProvider languageProvider, bool isTablet) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -228,12 +240,12 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: EdgeInsets.all(isTablet ? 40 : 32),
           child: Column(
             children: [
               Container(
-                width: 100,
-                height: 100,
+                width: isTablet ? 120 : 100,
+                height: isTablet ? 120 : 100,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -250,17 +262,17 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                     ),
                   ],
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.travel_explore,
-                  size: 50,
+                  size: isTablet ? 60 : 50,
                   color: Colors.white,
                 ),
               ),
               const SizedBox(height: 24),
               Text(
                 languageProvider.getText('app_name'),
-                style: const TextStyle(
-                  fontSize: 28,
+                style: TextStyle(
+                  fontSize: isTablet ? 32 : 28,
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
@@ -291,7 +303,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildAboutSection(LanguageProvider languageProvider) {
+  Widget _buildAboutSection(LanguageProvider languageProvider, bool isTablet) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -310,15 +322,15 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(isTablet ? 32 : 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    width: 50,
-                    height: 50,
+                    width: isTablet ? 60 : 50,
+                    height: isTablet ? 60 : 50,
                     decoration: BoxDecoration(
                       color: Colors.blue.shade50,
                       borderRadius: BorderRadius.circular(16),
@@ -326,14 +338,14 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                     child: Icon(
                       Icons.info_outline,
                       color: Colors.blue.shade400,
-                      size: 24,
+                      size: isTablet ? 28 : 24,
                     ),
                   ),
                   const SizedBox(width: 16),
                   Text(
                     languageProvider.getText('about_app'),
-                    style: const TextStyle(
-                      fontSize: 20,
+                    style: TextStyle(
+                      fontSize: isTablet ? 24 : 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -346,7 +358,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                     : 'Ku soo dhaweeyay App-ka Dalxiiska! Barnaamijkan wuxuu loo sameeyay si uu uga caawiyo martida inay wax ka baran meelaha dalxiiska ee Soomaaliya. Waxaad aragtaa meelaha taariikhiga ah, meelaha dhaqanka, meelaha diiniga ah, iyo xeebaha quruxsan ee dalka.',
                 style: TextStyle(
                   color: Colors.grey[700],
-                  fontSize: 16,
+                  fontSize: isTablet ? 18 : 16,
                   height: 1.6,
                 ),
               ),
@@ -357,7 +369,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildFeaturesSection(LanguageProvider languageProvider) {
+  Widget _buildFeaturesSection(LanguageProvider languageProvider, bool isTablet) {
     final features = [
       {
         'icon': Icons.location_on,
@@ -411,15 +423,15 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(isTablet ? 32 : 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    width: 50,
-                    height: 50,
+                    width: isTablet ? 60 : 50,
+                    height: isTablet ? 60 : 50,
                     decoration: BoxDecoration(
                       color: Colors.orange.shade50,
                       borderRadius: BorderRadius.circular(16),
@@ -427,14 +439,14 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                     child: Icon(
                       Icons.star_outline,
                       color: Colors.orange.shade400,
-                      size: 24,
+                      size: isTablet ? 28 : 24,
                     ),
                   ),
                   const SizedBox(width: 16),
                   Text(
                     languageProvider.currentLanguage == 'en' ? 'Features' : 'Sifooyinka',
-                    style: const TextStyle(
-                      fontSize: 20,
+                    style: TextStyle(
+                      fontSize: isTablet ? 24 : 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -446,6 +458,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                 title: feature['title'] as String,
                 description: feature['description'] as String,
                 color: feature['color'] as Color,
+                isTablet: isTablet,
               )).toList(),
             ],
           ),
@@ -459,14 +472,15 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     required String title,
     required String description,
     required Color color,
+    required bool isTablet,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: isTablet ? 48 : 40,
+            height: isTablet ? 48 : 40,
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
@@ -474,7 +488,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
             child: Icon(
               icon,
               color: color,
-              size: 20,
+              size: isTablet ? 24 : 20,
             ),
           ),
           const SizedBox(width: 16),
@@ -484,8 +498,8 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 16,
+                  style: TextStyle(
+                    fontSize: isTablet ? 18 : 16,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -493,7 +507,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                 Text(
                   description,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: isTablet ? 16 : 14,
                     color: Colors.grey[600],
                   ),
                 ),
@@ -505,7 +519,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildDeveloperSection(LanguageProvider languageProvider) {
+  Widget _buildDeveloperSection(LanguageProvider languageProvider, bool isTablet) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -524,15 +538,15 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(isTablet ? 32 : 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    width: 50,
-                    height: 50,
+                    width: isTablet ? 60 : 50,
+                    height: isTablet ? 60 : 50,
                     decoration: BoxDecoration(
                       color: Colors.indigo.shade50,
                       borderRadius: BorderRadius.circular(16),
@@ -540,14 +554,14 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                     child: Icon(
                       Icons.group_outlined,
                       color: Colors.indigo.shade400,
-                      size: 24,
+                      size: isTablet ? 28 : 24,
                     ),
                   ),
                   const SizedBox(width: 16),
                   Text(
                     languageProvider.getText('developer_team'),
-                    style: const TextStyle(
-                      fontSize: 20,
+                    style: TextStyle(
+                      fontSize: isTablet ? 24 : 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -560,6 +574,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                 'hassan@gmail.com',
                 Colors.blue.shade400,
                 Icons.code,
+                isTablet,
               ),
               _buildTeamMember(
                 'Mohamed Abdikhadir Gelle',
@@ -567,6 +582,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                 'mohamed@gmail.com',
                 Colors.green.shade400,
                 Icons.psychology,
+                isTablet,
               ),
               _buildTeamMember(
                 'Mohamed Abdullahi Ali',
@@ -574,6 +590,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                 'abdullahi@gmail.com',
                 Colors.purple.shade400,
                 Icons.design_services,
+                isTablet,
               ),
               _buildTeamMember(
                 'Libaan Abdi Ibraahim',
@@ -581,6 +598,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                 'libaan@gmail.com',
                 Colors.orange.shade400,
                 Icons.edit,
+                isTablet,
               ),
             ],
           ),
@@ -595,10 +613,11 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     String email,
     Color color,
     IconData roleIcon,
+    bool isTablet,
   ) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: isTablet ? 20 : 16),
+      padding: EdgeInsets.all(isTablet ? 20 : 16),
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(16),
@@ -612,8 +631,8 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
           Stack(
             children: [
               Container(
-                width: 60,
-                height: 60,
+                width: isTablet ? 70 : 60,
+                height: isTablet ? 70 : 60,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [color, color.withOpacity(0.7)],
@@ -623,9 +642,9 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                 child: Center(
                   child: Text(
                     name.split(' ').map((n) => n[0]).take(2).join(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: isTablet ? 20 : 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -661,8 +680,8 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
-                    fontSize: 16,
+                  style: TextStyle(
+                    fontSize: isTablet ? 18 : 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -671,7 +690,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                   role,
                   style: TextStyle(
                     color: color,
-                    fontSize: 14,
+                    fontSize: isTablet ? 16 : 14,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -680,7 +699,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                   email,
                   style: TextStyle(
                     color: Colors.grey[600],
-                    fontSize: 13,
+                    fontSize: isTablet ? 15 : 13,
                   ),
                 ),
               ],

@@ -74,15 +74,24 @@ class _FavoritesTabState extends State<FavoritesTab>
             _favorites = favorites;
             _isLoading = false;
           });
+          // Start animations after loading
+          _fadeController.forward();
+          _slideController.forward();
         }
       } catch (e) {
         print('Error loading favorites: $e');
         if (mounted) {
           setState(() => _isLoading = false);
+          // Start animations even when there's an error
+          _fadeController.forward();
+          _slideController.forward();
         }
       }
     } else {
       setState(() => _isLoading = false);
+      // Start animations even when no user
+      _fadeController.forward();
+      _slideController.forward();
     }
   }
 
@@ -452,7 +461,10 @@ class _FavoritesTabState extends State<FavoritesTab>
                         ),
                         child: PlaceCard(
                           place: place,
-                          onFavoriteChanged: () => _loadFavorites(),
+                          onFavoriteChanged: () {
+                            // Reload favorites when a place is unfavorited
+                            _loadFavorites();
+                          },
                         ),
                       ),
                     );
