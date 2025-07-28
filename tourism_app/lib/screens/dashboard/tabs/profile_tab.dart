@@ -277,6 +277,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
                 elevation: 0,
                 backgroundColor: Colors.transparent,
                 stretch: true,
+                automaticallyImplyLeading: false,
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(
                     fit: StackFit.expand,

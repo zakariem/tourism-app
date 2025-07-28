@@ -44,10 +44,20 @@ class _PlaceCardState extends State<PlaceCard> {
           widget.place['id'],
         );
         if (mounted) {
-          setState(() => _isFavorite = isFavorite);
+          setState(() {
+            _isFavorite = isFavorite;
+            _isLoading = false;
+          });
         }
       } catch (e) {
         print('Error checking favorite status: $e');
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    } else {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
