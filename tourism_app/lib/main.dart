@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
 import 'package:tourism_app/providers/auth_provider.dart';
+import 'package:tourism_app/providers/favorites_provider.dart';
 import 'package:tourism_app/screens/auth/login_screen.dart';
 import 'package:tourism_app/screens/auth/register_screen.dart';
 import 'package:tourism_app/screens/dashboard/dashboard_screen.dart';
@@ -28,6 +29,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => UserBehaviorProvider()),
+        ChangeNotifierProvider(create: (_) => FavoritesProvider()),
       ],
       child: Consumer2<LanguageProvider, AuthProvider>(
         builder: (context, languageProvider, authProvider, _) {

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/auth_provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
-import 'package:tourism_app/services/database_helper.dart';
+import 'package:tourism_app/providers/favorites_provider.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:tourism_app/screens/place_details_screen.dart';
@@ -26,9 +26,7 @@ class PlaceCard extends StatefulWidget {
 }
 
 class _PlaceCardState extends State<PlaceCard> {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
-  bool _isFavorite = false;
-  bool _isLoading = true;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -37,29 +35,12 @@ class _PlaceCardState extends State<PlaceCard> {
   }
 
   Future<void> _checkFavoriteStatus() async {
-    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
-    if (user != null && user['_id'] != null) {
-      try {
-        final isFavorite = await _dbHelper.isPlaceFavorite(
-          user['_id'],
-          widget.place['id'],
-        );
-        if (mounted) {
-          setState(() {
-            _isFavorite = isFavorite;
-            _isLoading = false;
-          });
-        }
-      } catch (e) {
-        print('Error checking favorite status: $e');
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
-      }
-    } else {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+    final favoritesProvider =
+        Provider.of<FavoritesProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    if (authProvider.isAuthenticated) {
+      await favoritesProvider.loadFavorites();
     }
   }
 
@@ -68,29 +49,45 @@ class _PlaceCardState extends State<PlaceCard> {
 
     setState(() => _isLoading = true);
 
-    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
-    if (user != null && user['_id'] != null) {
-      try {
-        if (_isFavorite) {
-          await _dbHelper.removeFromFavorites(user['_id'], widget.place['id']);
-        } else {
-          await _dbHelper.addToFavorites(user['_id'], widget.place['id']);
-        }
+    final favoritesProvider =
+        Provider.of<FavoritesProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-        if (mounted) {
-          setState(() {
-            _isFavorite = !_isFavorite;
-            _isLoading = false;
-          });
-          widget.onFavoriteChanged.call();
-        }
-      } catch (e) {
-        print('Error toggling favorite: $e');
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
-      }
-    } else {
+    if (!authProvider.isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in to add favorites'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    try {
+      await favoritesProvider.toggleFavorite(
+          widget.place['_id'] ?? widget.place['id'], widget.place);
+      widget.onFavoriteChanged.call();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            favoritesProvider
+                    .isFavorite(widget.place['_id'] ?? widget.place['id'])
+                ? 'Added to favorites'
+                : 'Removed from favorites',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating favorites: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -221,334 +218,345 @@ class _PlaceCardState extends State<PlaceCard> {
 
   @override
   Widget build(BuildContext context) {
-    final languageProvider = Provider.of<LanguageProvider>(context);
-    final category = widget.place['category'] ?? 'unknown';
+    return Consumer<FavoritesProvider>(
+      builder: (context, favoritesProvider, child) {
+        final languageProvider = Provider.of<LanguageProvider>(context);
+        final category = widget.place['category'] ?? 'unknown';
 
-    // Use image_url if available, otherwise fall back to image_path
-    final imagePath = widget.place['image_url'] ?? widget.place['image_path'];
+        // Use image_url if available, otherwise fall back to image_path
+        final imagePath =
+            widget.place['image_url'] ?? widget.place['image_path'];
 
-    final name = languageProvider.currentLanguage == 'som'
-        ? widget.place['name_som'] ?? widget.place['name_eng'] ?? 'Unknown'
-        : widget.place['name_eng'] ?? 'Unknown';
+        final name = languageProvider.currentLanguage == 'som'
+            ? widget.place['name_som'] ?? widget.place['name_eng'] ?? 'Unknown'
+            : widget.place['name_eng'] ?? 'Unknown';
 
-    final description = languageProvider.currentLanguage == 'som'
-        ? widget.place['desc_som'] ??
-            widget.place['desc_eng'] ??
-            'No description'
-        : widget.place['desc_eng'] ?? 'No description';
+        final description = languageProvider.currentLanguage == 'som'
+            ? widget.place['desc_som'] ??
+                widget.place['desc_eng'] ??
+                'No description'
+            : widget.place['desc_eng'] ?? 'No description';
 
-    // Truncate description to 100 characters
-    final truncatedDescription = description.length > 100
-        ? '${description.substring(0, 100)}...'
-        : description;
+        // Truncate description to 100 characters
+        final truncatedDescription = description.length > 100
+            ? '${description.substring(0, 100)}...'
+            : description;
 
-    if (widget.modern) {
-      // Modern Card Design
-      return Material(
-        elevation: 8,
-        borderRadius: BorderRadius.circular(24),
-        color: Colors.white,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PlaceDetailsScreen(place: widget.place),
-              ),
-            ).then((_) => {
-                  widget.onFavoriteChanged(),
-                  Provider.of<UserBehaviorProvider>(context, listen: false)
-                      .recordClick(widget.place['category'])
-                });
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image with floating favorite button
-              Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(24),
-                      topRight: Radius.circular(24),
-                    ),
-                    child: SizedBox(
-                      height: 170,
-                      width: double.infinity,
-                      child: _buildImage(imagePath),
-                    ),
+        if (widget.modern) {
+          // Modern Card Design
+          return Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(24),
+            color: Colors.white,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(24),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        PlaceDetailsScreen(place: widget.place),
                   ),
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: Material(
-                      color: Colors.white,
-                      shape: const CircleBorder(),
-                      elevation: 4,
-                      child: IconButton(
-                        icon: _isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : Icon(
-                                _isFavorite
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                color: _isFavorite ? Colors.red : Colors.grey,
-                              ),
-                        onPressed: _isLoading ? null : _toggleFavorite,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            name,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            languageProvider.getText(category),
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on,
-                          color: AppColors.primary,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            widget.place['location'],
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      truncatedDescription,
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 15,
-                      ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  PlaceDetailsScreen(place: widget.place),
-                            ),
-                          ).then((_) => {
-                                widget.onFavoriteChanged(),
-                                Provider.of<UserBehaviorProvider>(context,
-                                        listen: false)
-                                    .recordClick(widget.place['category'])
-                              });
-                        },
-                        child: Text(
-                          languageProvider.getText('read_more'),
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Default (old) Card Design
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: () {
-          print(
-              '[PlaceCard] Place tapped: \\${widget.place['name_eng']} (\\${widget.place['category']})');
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PlaceDetailsScreen(place: widget.place),
-            ),
-          ).then((_) => {
-                widget.onFavoriteChanged(),
-                Provider.of<UserBehaviorProvider>(context, listen: false)
-                    .recordClick(widget.place['category'])
-              });
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image
-            SizedBox(
-              height: 140,
-              width: double.infinity,
-              child: _buildImage(imagePath),
-            ),
-
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(16),
+                ).then((_) => {
+                      widget.onFavoriteChanged(),
+                      Provider.of<UserBehaviorProvider>(context, listen: false)
+                          .recordClick(widget.place['category'])
+                    });
+              },
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title and Category
-                  Row(
+                  // Image with floating favorite button
+                  Stack(
                     children: [
-                      Expanded(
-                        child: Text(
-                          name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
+                      ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(24),
+                          topRight: Radius.circular(24),
+                        ),
+                        child: SizedBox(
+                          height: 170,
+                          width: double.infinity,
+                          child: _buildImage(imagePath),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          languageProvider.getText(category),
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: Material(
+                          color: Colors.white,
+                          shape: const CircleBorder(),
+                          elevation: 4,
+                          child: IconButton(
+                            icon: _isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : Icon(
+                                    favoritesProvider.isFavorite(
+                                            widget.place['_id'] ??
+                                                widget.place['id'])
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: favoritesProvider.isFavorite(
+                                            widget.place['_id'] ??
+                                                widget.place['id'])
+                                        ? Colors.red
+                                        : Colors.grey,
+                                  ),
+                            onPressed: _isLoading ? null : _toggleFavorite,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-
-                  // Location
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        color: AppColors.primary,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          widget.place['location'],
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                name,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                languageProvider.getText(category),
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              color: AppColors.primary,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                widget.place['location'],
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          truncatedDescription,
                           style: TextStyle(
                             color: AppColors.textSecondary,
-                            fontSize: 14,
+                            fontSize: 15,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      PlaceDetailsScreen(place: widget.place),
+                                ),
+                              ).then((_) => {
+                                    widget.onFavoriteChanged(),
+                                    Provider.of<UserBehaviorProvider>(context,
+                                            listen: false)
+                                        .recordClick(widget.place['category'])
+                                  });
+                            },
+                            child: Text(
+                              languageProvider.getText('read_more'),
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  // // Description
-                  // Text(
-                  //   truncatedDescription,
-                  //   style: TextStyle(
-                  //     color: AppColors.textSecondary,
-                  //     fontSize: 14,
-                  //   ),
-                  //   maxLines: 3,
-                  //   overflow: TextOverflow.ellipsis,
-                  // ),
-                  // const SizedBox(height: 8),
-
-                  // Read More Button
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        print('[PlaceCard] Read More button pressed');
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                PlaceDetailsScreen(place: widget.place),
-                          ),
-                        ).then((_) => {
-                              widget.onFavoriteChanged(),
-                              Provider.of<UserBehaviorProvider>(context,
-                                      listen: false)
-                                  .recordClick(widget.place['category'])
-                            });
-                      },
-                      child: Text(
-                        languageProvider.getText('read_more'),
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
+          );
+        }
+
+        // Default (old) Card Design
+        return Card(
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: InkWell(
+            onTap: () {
+              print(
+                  '[PlaceCard] Place tapped: \\${widget.place['name_eng']} (\\${widget.place['category']})');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PlaceDetailsScreen(place: widget.place),
+                ),
+              ).then((_) => {
+                    widget.onFavoriteChanged(),
+                    Provider.of<UserBehaviorProvider>(context, listen: false)
+                        .recordClick(widget.place['category'])
+                  });
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image
+                SizedBox(
+                  height: 140,
+                  width: double.infinity,
+                  child: _buildImage(imagePath),
+                ),
+
+                // Content
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title and Category
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              name,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              languageProvider.getText(category),
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Location
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            color: AppColors.primary,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              widget.place['location'],
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      // // Description
+                      // Text(
+                      //   truncatedDescription,
+                      //   style: TextStyle(
+                      //     color: AppColors.textSecondary,
+                      //     fontSize: 14,
+                      //   ),
+                      //   maxLines: 3,
+                      //   overflow: TextOverflow.ellipsis,
+                      // ),
+                      // const SizedBox(height: 8),
+
+                      // Read More Button
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    PlaceDetailsScreen(place: widget.place),
+                              ),
+                            ).then((_) => {
+                                  widget.onFavoriteChanged(),
+                                  Provider.of<UserBehaviorProvider>(context,
+                                          listen: false)
+                                      .recordClick(widget.place['category'])
+                                });
+                          },
+                          child: Text(
+                            languageProvider.getText('read_more'),
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

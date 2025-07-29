@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
-import 'package:tourism_app/providers/auth_provider.dart';
+import 'package:tourism_app/providers/favorites_provider.dart';
 import 'package:tourism_app/services/database_helper.dart';
 import 'package:tourism_app/utils/app_colors.dart';
-// import 'package:tourism_app/widgets/language_toggle.dart';
-// import 'package:cached_network_image/cached_network_image.dart';
 import 'package:tourism_app/providers/user_behavior_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
+import 'dart:async';
 
 class PlaceDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> place;
@@ -28,10 +27,11 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
   final PageController _imagePageController = PageController();
 
   bool _isFavorite = false;
-  bool _isLoading = false; // Added missing variable
+  bool _isLoading = false;
   late DateTime _enterTime;
   UserBehaviorProvider? _userBehaviorProvider;
   int _currentImageIndex = 0;
+  Timer? _autoScrollTimer;
 
   late AnimationController _animationController;
   late AnimationController _favoriteAnimationController;
@@ -73,15 +73,25 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
     _enterTime = DateTime.now();
     // Initialize image gallery with the place's image and related images
     _imageGallery = _getPlaceImages(widget.place['image_path']);
-    print('Place: ${widget.place['name_eng']}');
-    print('Original image path: ${widget.place['image_path']}');
-    print('Image gallery: $_imageGallery');
-
-    // Test if the main image exists
-    _testImageExists(widget.place['image_path']);
 
     _checkFavoriteStatus();
     _setupAnimations();
+    _startAutoScroll();
+  }
+
+  void _startAutoScroll() {
+    if (_imageGallery.length > 1) {
+      _autoScrollTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+        if (mounted && _imagePageController.hasClients) {
+          final nextIndex = (_currentImageIndex + 1) % _imageGallery.length;
+          _imagePageController.animateToPage(
+            nextIndex,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
   }
 
   List<String> _getPlaceImages(String mainImagePath) {
@@ -156,14 +166,6 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
         path.contains('dayniile.png');
   }
 
-  void _testImageExists(String imagePath) {
-    String fullPath = imagePath.startsWith('assets/')
-        ? imagePath
-        : 'assets/places/$imagePath';
-    print('Testing image path: $fullPath');
-    // This will help us debug which images are actually loading
-  }
-
   void _setupAnimations() {
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1000),
@@ -211,6 +213,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
   void dispose() {
     final seconds = DateTime.now().difference(_enterTime).inSeconds.toDouble();
     _userBehaviorProvider?.recordViewTime(seconds, notify: false);
+    _autoScrollTimer?.cancel();
     _animationController.dispose();
     _favoriteAnimationController.dispose();
     _fabAnimationController.dispose();
@@ -219,18 +222,19 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
   }
 
   Future<void> _checkFavoriteStatus() async {
-    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
-    if (user != null && user['_id'] != null) {
+    final favoritesProvider =
+        Provider.of<FavoritesProvider>(context, listen: false);
+    final placeId =
+        widget.place['_id']?.toString() ?? widget.place['id']?.toString() ?? '';
+
+    if (placeId.isNotEmpty) {
       try {
-        final isFavorite = await _dbHelper.isPlaceFavorite(
-          user['_id'],
-          widget.place['id'],
-        );
+        final isFavorite = await favoritesProvider.checkFavoriteStatus(placeId);
         if (mounted) {
           setState(() => _isFavorite = isFavorite);
         }
       } catch (e) {
-        print('Error checking favorite status: $e');
+        // Handle error silently
       }
     }
   }
@@ -239,26 +243,69 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
     if (_isLoading) return;
 
     setState(() => _isLoading = true);
+    _favoriteAnimationController.forward().then((_) {
+      _favoriteAnimationController.reverse();
+    });
 
-    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
-    if (user != null && user['_id'] != null) {
+    final favoritesProvider =
+        Provider.of<FavoritesProvider>(context, listen: false);
+    final placeId =
+        widget.place['_id']?.toString() ?? widget.place['id']?.toString() ?? '';
+
+    if (placeId.isNotEmpty) {
       try {
-        if (_isFavorite) {
-          await _dbHelper.removeFromFavorites(user['_id'], widget.place['id']);
-        } else {
-          await _dbHelper.addToFavorites(user['_id'], widget.place['id']);
-        }
+        final success =
+            await favoritesProvider.toggleFavorite(placeId, widget.place);
 
-        if (mounted) {
+        if (mounted && success) {
           setState(() {
             _isFavorite = !_isFavorite;
             _isLoading = false;
           });
+
+          // Show feedback
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(
+                    _isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(_isFavorite
+                      ? 'Added to favorites!'
+                      : 'Removed from favorites!'),
+                ],
+              ),
+              backgroundColor: _isFavorite ? Colors.red : Colors.grey[600],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        } else if (mounted) {
+          setState(() => _isLoading = false);
         }
       } catch (e) {
         print('Error toggling favorite: $e');
         if (mounted) {
           setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.error, color: Colors.white),
+                  SizedBox(width: 12),
+                  Text('Failed to update favorites'),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          );
         }
       }
     } else {
@@ -411,41 +458,6 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                       ),
                     ],
                   ),
-                  child: IconButton(
-                    icon: const Icon(Icons.share, color: Colors.grey),
-                    onPressed: () {
-                      // Share functionality
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Row(
-                            children: [
-                              Icon(Icons.share, color: Colors.white),
-                              SizedBox(width: 12),
-                              Text('Shared successfully!'),
-                            ],
-                          ),
-                          backgroundColor: Colors.green,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Container(
-                  margin: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
                   child: ScaleTransition(
                     scale: _favoriteScaleAnimation,
                     child: IconButton(
@@ -476,8 +488,6 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                             _imageGallery[index],
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                              print(
-                                  'Image error for ${_imageGallery[index]}: $error');
                               return Container(
                                 color: Colors.grey[200],
                                 child: Center(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/auth_provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
-import 'package:tourism_app/services/database_helper.dart';
+import 'package:tourism_app/providers/favorites_provider.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:tourism_app/widgets/place_card.dart';
 import 'dart:ui';
@@ -16,9 +16,7 @@ class FavoritesTab extends StatefulWidget {
 
 class _FavoritesTabState extends State<FavoritesTab>
     with TickerProviderStateMixin {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
-  List<Map<String, dynamic>> _favorites = [];
-  bool _isLoading = true;
+  bool _isLoading = false;
 
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -65,31 +63,21 @@ class _FavoritesTabState extends State<FavoritesTab>
   Future<void> _loadFavorites() async {
     setState(() => _isLoading = true);
 
-    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
-    if (user != null && user['_id'] != null) {
+    final favoritesProvider =
+        Provider.of<FavoritesProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    if (authProvider.isAuthenticated) {
       try {
-        final favorites = await _dbHelper.getFavoritePlaces(user['_id']);
-        if (mounted) {
-          setState(() {
-            _favorites = favorites;
-            _isLoading = false;
-          });
-          // Start animations after loading
-          _fadeController.forward();
-          _slideController.forward();
-        }
+        await favoritesProvider.loadFavorites();
       } catch (e) {
         print('Error loading favorites: $e');
-        if (mounted) {
-          setState(() => _isLoading = false);
-          // Start animations even when there's an error
-          _fadeController.forward();
-          _slideController.forward();
-        }
       }
-    } else {
+    }
+
+    if (mounted) {
       setState(() => _isLoading = false);
-      // Start animations even when no user
+      // Start animations after loading
       _fadeController.forward();
       _slideController.forward();
     }
@@ -97,130 +85,142 @@ class _FavoritesTabState extends State<FavoritesTab>
 
   @override
   Widget build(BuildContext context) {
-    final languageProvider = Provider.of<LanguageProvider>(context);
+    return Consumer<FavoritesProvider>(
+      builder: (context, favoritesProvider, child) {
+        final languageProvider = Provider.of<LanguageProvider>(context);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // Modern App Bar
-          SliverAppBar(
-            expandedHeight: 200,
-            floating: false,
-            pinned: true,
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.pink.shade400,
-                      Colors.pink.shade300,
-                    ],
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    // Pattern overlay
-                    Positioned.fill(
-                      child: Opacity(
-                        opacity: 0.1,
-                        child: Image.network(
-                          'https://www.transparenttextures.com/patterns/hearts.png',
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    // Content
-                    Positioned(
-                      bottom: 40,
-                      left: 0,
-                      right: 0,
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 10),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.favorite,
-                              size: 40,
-                              color: Colors.pink.shade400,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            languageProvider.getText('favorites'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '${_favorites.length} ${languageProvider.currentLanguage == 'en' ? 'places saved' : 'meel la kaydiyay'}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
+        return Scaffold(
+          backgroundColor: const Color(0xFFF8F9FA),
+          body: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // Modern App Bar
+              SliverAppBar(
+                expandedHeight: 200,
+                floating: false,
+                pinned: true,
+                elevation: 0,
+                backgroundColor: Colors.transparent,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.pink.shade400,
+                          Colors.pink.shade300,
                         ],
                       ),
                     ),
-                    // Curved bottom
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        height: 30,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(30),
-                            topRight: Radius.circular(30),
+                    child: Stack(
+                      children: [
+                        // Pattern overlay
+                        Positioned.fill(
+                          child: Opacity(
+                            opacity: 0.1,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.pink.withOpacity(0.1),
+                                    Colors.red.withOpacity(0.1),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        // Content
+                        Positioned(
+                          bottom: 40,
+                          left: 0,
+                          right: 0,
+                          child: Column(
+                            children: [
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  Icons.favorite,
+                                  size: 40,
+                                  color: Colors.pink.shade400,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                languageProvider.getText('favorites'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '${favoritesProvider.favorites.length} ${languageProvider.currentLanguage == 'en' ? 'places saved' : 'meel la kaydiyay'}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Curved bottom
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          child: Container(
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(30),
+                                topRight: Radius.circular(30),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
+                automaticallyImplyLeading: false,
               ),
-            ),
-            automaticallyImplyLeading: false,
-          ),
 
-          // Content
-          SliverToBoxAdapter(
-            child: _isLoading
-                ? _buildLoadingState()
-                : _favorites.isEmpty
-                    ? _buildEmptyState(languageProvider)
-                    : _buildFavoritesList(),
+              // Content
+              SliverToBoxAdapter(
+                child: _isLoading
+                    ? _buildLoadingState()
+                    : favoritesProvider.favorites.isEmpty
+                        ? _buildEmptyState(languageProvider)
+                        : _buildFavoritesList(),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildLoadingState() {
-    return Container(
+    return SizedBox(
       height: 400,
       child: Center(
         child: Column(
@@ -240,7 +240,7 @@ class _FavoritesTabState extends State<FavoritesTab>
                   ),
                 ],
               ),
-              child: Center(
+              child: const Center(
                 child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                   strokeWidth: 3,
@@ -346,135 +346,139 @@ class _FavoritesTabState extends State<FavoritesTab>
   }
 
   Widget _buildFavoritesList() {
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: RefreshIndicator(
-          onRefresh: _loadFavorites,
-          color: Colors.pink.shade400,
-          backgroundColor: Colors.white,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Statistics Card
-                Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  color: Colors.white,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.pink.shade400,
-                                  Colors.pink.shade300,
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Icon(
-                              Icons.favorite,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                          ),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${_favorites.length}',
-                                  style: const TextStyle(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                Text(
-                                  Provider.of<LanguageProvider>(context)
-                                              .currentLanguage ==
-                                          'en'
-                                      ? 'Favorite Places'
-                                      : 'Meelaha La Jecel Yahay',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+    return Consumer<FavoritesProvider>(
+      builder: (context, favoritesProvider, child) {
+        return FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: RefreshIndicator(
+              onRefresh: _loadFavorites,
+              color: Colors.pink.shade400,
+              backgroundColor: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Statistics Card
+                    Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Favorites List (not grid for better mobile experience)
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _favorites.length,
-                  itemBuilder: (context, index) {
-                    final place = _favorites[index];
-                    return AnimatedContainer(
-                      duration: Duration(milliseconds: 300 + (index * 100)),
-                      curve: Curves.easeOutBack,
-                      margin: const EdgeInsets.only(bottom: 16),
+                      color: Colors.white,
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
                             ),
                           ],
                         ),
-                        child: PlaceCard(
-                          place: place,
-                          onFavoriteChanged: () {
-                            // Reload favorites when a place is unfavorited
-                            _loadFavorites();
-                          },
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 60,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.pink.shade400,
+                                      Colors.pink.shade300,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Icon(
+                                  Icons.favorite,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              ),
+                              const SizedBox(width: 20),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${favoritesProvider.favorites.length}',
+                                      style: const TextStyle(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    Text(
+                                      Provider.of<LanguageProvider>(context)
+                                                  .currentLanguage ==
+                                              'en'
+                                          ? 'Favorite Places'
+                                          : 'Meelaha La Jecel Yahay',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    );
-                  },
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Favorites List (not grid for better mobile experience)
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: favoritesProvider.favorites.length,
+                      itemBuilder: (context, index) {
+                        final place = favoritesProvider.favorites[index];
+                        return AnimatedContainer(
+                          duration: Duration(milliseconds: 300 + (index * 100)),
+                          curve: Curves.easeOutBack,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: PlaceCard(
+                              place: place,
+                              onFavoriteChanged: () {
+                                // Reload favorites when a place is unfavorited
+                                _loadFavorites();
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

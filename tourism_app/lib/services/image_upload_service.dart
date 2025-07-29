@@ -8,7 +8,7 @@ class ImageUploadService {
   // Upload a single image
   static Future<Map<String, dynamic>?> uploadImage(File imageFile) async {
     try {
-      print('📤 Uploading image: ${imageFile.path}');
+      // print('📤 Uploading image: ${imageFile.path}');
 
       var request = http.MultipartRequest(
         'POST',
@@ -28,11 +28,10 @@ class ImageUploadService {
       var jsonResponse = json.decode(responseData);
 
       if (response.statusCode == 200) {
-        print('✅ Image uploaded successfully');
         return jsonResponse;
       } else {
         print('❌ Upload failed: ${response.statusCode}');
-        print('Response: $responseData');
+        // print('Response: $responseData');
         return null;
       }
     } catch (e) {
@@ -107,11 +106,10 @@ class ImageUploadService {
       var jsonResponse = json.decode(responseData);
 
       if (response.statusCode == 201) {
-        print('✅ Place added successfully');
         return jsonResponse;
       } else {
         print('❌ Failed to add place: ${response.statusCode}');
-        print('Response: $responseData');
+        // print('Response: $responseData');
         return null;
       }
     } catch (e) {
@@ -172,11 +170,10 @@ class ImageUploadService {
       var jsonResponse = json.decode(responseData);
 
       if (response.statusCode == 200) {
-        print('✅ Place updated successfully');
         return jsonResponse;
       } else {
         print('❌ Failed to update place: ${response.statusCode}');
-        print('Response: $responseData');
+        // print('Response: $responseData');
         return null;
       }
     } catch (e) {

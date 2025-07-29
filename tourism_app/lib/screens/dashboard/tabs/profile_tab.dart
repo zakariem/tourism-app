@@ -298,9 +298,17 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
                       // Pattern overlay
                       Opacity(
                         opacity: 0.1,
-                        child: Image.network(
-                          'https://www.transparenttextures.com/patterns/cubes.png',
-                          fit: BoxFit.cover,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.blue.withOpacity(0.1),
+                                Colors.purple.withOpacity(0.1),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                       // Profile content

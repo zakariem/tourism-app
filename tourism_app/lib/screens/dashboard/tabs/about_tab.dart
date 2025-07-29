@@ -21,22 +21,22 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    
+
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    
+
     _fadeAnimation = CurvedAnimation(
       parent: _fadeController,
       curve: Curves.easeOut,
     );
-    
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
@@ -44,7 +44,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
       parent: _slideController,
       curve: Curves.easeOutQuint,
     ));
-    
+
     _fadeController.forward();
     _slideController.forward();
   }
@@ -61,7 +61,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     final languageProvider = Provider.of<LanguageProvider>(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
-    
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: FadeTransition(
@@ -96,9 +96,17 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                         Positioned.fill(
                           child: Opacity(
                             opacity: 0.1,
-                            child: Image.network(
-                              'https://www.transparenttextures.com/patterns/cubes.png',
-                              fit: BoxFit.cover,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.green.withOpacity(0.1),
+                                    Colors.teal.withOpacity(0.1),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -173,39 +181,40 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                   ),
                 ],
               ),
-              
+
               // Content
               SliverToBoxAdapter(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final maxWidth = isTablet ? 800.0 : double.infinity;
                     final horizontalPadding = isTablet ? 40.0 : 20.0;
-                    
+
                     return Center(
                       child: Container(
                         constraints: BoxConstraints(maxWidth: maxWidth),
-                        padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 20),
+                        padding: EdgeInsets.fromLTRB(
+                            horizontalPadding, 0, horizontalPadding, 20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // App Info Card
                             _buildAppInfoCard(languageProvider, isTablet),
-                            
+
                             SizedBox(height: isTablet ? 32 : 24),
-                            
+
                             // About App Section
                             _buildAboutSection(languageProvider, isTablet),
-                            
+
                             SizedBox(height: isTablet ? 32 : 24),
-                            
+
                             // Features Section
                             _buildFeaturesSection(languageProvider, isTablet),
-                            
+
                             SizedBox(height: isTablet ? 32 : 24),
-                            
+
                             // Developer Team Section
                             _buildDeveloperSection(languageProvider, isTablet),
-                            
+
                             SizedBox(height: isTablet ? 60 : 40),
                           ],
                         ),
@@ -369,37 +378,46 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildFeaturesSection(LanguageProvider languageProvider, bool isTablet) {
+  Widget _buildFeaturesSection(
+      LanguageProvider languageProvider, bool isTablet) {
     final features = [
       {
         'icon': Icons.location_on,
-        'title': languageProvider.currentLanguage == 'en' ? 'Discover Places' : 'Baadh Meelaha',
-        'description': languageProvider.currentLanguage == 'en' 
-            ? 'Explore amazing tourist destinations' 
+        'title': languageProvider.currentLanguage == 'en'
+            ? 'Discover Places'
+            : 'Baadh Meelaha',
+        'description': languageProvider.currentLanguage == 'en'
+            ? 'Explore amazing tourist destinations'
             : 'Baadh meelaha dalxiiska ee cajiibka ah',
         'color': Colors.red.shade400,
       },
       {
         'icon': Icons.favorite,
-        'title': languageProvider.currentLanguage == 'en' ? 'Save Favorites' : 'Kaydi Kuwa Aad Jeceshahay',
-        'description': languageProvider.currentLanguage == 'en' 
-            ? 'Keep track of your favorite places' 
+        'title': languageProvider.currentLanguage == 'en'
+            ? 'Save Favorites'
+            : 'Kaydi Kuwa Aad Jeceshahay',
+        'description': languageProvider.currentLanguage == 'en'
+            ? 'Keep track of your favorite places'
             : 'La soco meelaha aad jeceshahay',
         'color': Colors.pink.shade400,
       },
       {
         'icon': Icons.chat,
-        'title': languageProvider.currentLanguage == 'en' ? 'AI Assistant' : 'Caawimaadka AI',
-        'description': languageProvider.currentLanguage == 'en' 
-            ? 'Get help from our smart assistant' 
+        'title': languageProvider.currentLanguage == 'en'
+            ? 'AI Assistant'
+            : 'Caawimaadka AI',
+        'description': languageProvider.currentLanguage == 'en'
+            ? 'Get help from our smart assistant'
             : 'Ka hel caawimaad caawimaadkeena caqliga ah',
         'color': Colors.purple.shade400,
       },
       {
         'icon': Icons.language,
-        'title': languageProvider.currentLanguage == 'en' ? 'Multi-language' : 'Luuqado Badan',
-        'description': languageProvider.currentLanguage == 'en' 
-            ? 'Available in English and Somali' 
+        'title': languageProvider.currentLanguage == 'en'
+            ? 'Multi-language'
+            : 'Luuqado Badan',
+        'description': languageProvider.currentLanguage == 'en'
+            ? 'Available in English and Somali'
             : 'Waxaa lagu heli karaa Ingiriisi iyo Soomaali',
         'color': Colors.green.shade400,
       },
@@ -444,7 +462,9 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                   ),
                   const SizedBox(width: 16),
                   Text(
-                    languageProvider.currentLanguage == 'en' ? 'Features' : 'Sifooyinka',
+                    languageProvider.currentLanguage == 'en'
+                        ? 'Features'
+                        : 'Sifooyinka',
                     style: TextStyle(
                       fontSize: isTablet ? 24 : 20,
                       fontWeight: FontWeight.bold,
@@ -453,13 +473,15 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                 ],
               ),
               const SizedBox(height: 20),
-              ...features.map((feature) => _buildFeatureItem(
-                icon: feature['icon'] as IconData,
-                title: feature['title'] as String,
-                description: feature['description'] as String,
-                color: feature['color'] as Color,
-                isTablet: isTablet,
-              )).toList(),
+              ...features
+                  .map((feature) => _buildFeatureItem(
+                        icon: feature['icon'] as IconData,
+                        title: feature['title'] as String,
+                        description: feature['description'] as String,
+                        color: feature['color'] as Color,
+                        isTablet: isTablet,
+                      ))
+                  .toList(),
             ],
           ),
         ),
@@ -519,7 +541,8 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildDeveloperSection(LanguageProvider languageProvider, bool isTablet) {
+  Widget _buildDeveloperSection(
+      LanguageProvider languageProvider, bool isTablet) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(

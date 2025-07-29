@@ -31,7 +31,7 @@ class DatabaseHelper {
         print('✅ Database opened successfully');
         // Check if places table exists and has data
         db.rawQuery('SELECT COUNT(*) as count FROM places').then((result) {
-          print('📊 Places table has ${result.first['count']} records');
+          // Places table has ${result.first['count']} records
         }).catchError((e) {
           print('❌ Error checking places table: $e');
         });
@@ -170,7 +170,7 @@ class DatabaseHelper {
   }
 
   Future<Map<String, dynamic>?> getUserByUsername(String username) async {
-    print('🔍 Looking up user: $username');
+    // Looking up user: $username
     Database db = await database;
     List<Map<String, dynamic>> results = await db.query(
       'users',
@@ -204,40 +204,30 @@ class DatabaseHelper {
 
   // Places operations
   Future<int> insertPlace(Map<String, dynamic> place) async {
-    print('🏖️ Inserting new place: ${place['name_eng']}');
     try {
       Database db = await database;
       final id = await db.insert('places', place);
-      print('✅ Place inserted with ID: $id');
       return id;
     } catch (e) {
       print('❌ Error inserting place ${place['name_eng']}: $e');
-      print('📍 Place data: $place');
       rethrow;
     }
   }
 
   Future<List<Map<String, dynamic>>> getAllPlaces() async {
-    print('🔍 Fetching all places');
     Database db = await database;
     final places = await db.query('places');
-    print('✅ Found ${places.length} places');
-    if (places.isNotEmpty) {
-      print(
-          '📍 Sample place: ${places.first['name_eng']} (${places.first['category']})');
-    } else {
+    if (places.isEmpty) {
       print('⚠️ No places found in database');
     }
     return places;
   }
 
   Future<int> getPlacesCount() async {
-    print('🔍 Counting places in database');
     try {
       Database db = await database;
       final result = await db.rawQuery('SELECT COUNT(*) as count FROM places');
       final count = Sqflite.firstIntValue(result) ?? 0;
-      print('📊 Database has $count places');
       return count;
     } catch (e) {
       print('❌ Error counting places: $e');
@@ -253,7 +243,7 @@ class DatabaseHelper {
       where: 'category = ?',
       whereArgs: [category],
     );
-    print('✅ Found ${places.length} places in category: $category');
+    // Found ${places.length} places in category: $category
     return places;
   }
 
@@ -271,50 +261,57 @@ class DatabaseHelper {
   }
 
   // Favorites operations
-  Future<int> addToFavorites(int userId, int placeId) async {
-    print('⭐ Adding place $placeId to favorites for user $userId');
+  Future<int> addToFavorites(dynamic userId, dynamic placeId) async {
+    final userIdInt = userId is int ? userId : int.parse(userId.toString());
+    final placeIdInt = placeId is int ? placeId : int.parse(placeId.toString());
+    
     Database db = await database;
     final id = await db.insert('favorites', {
-      'user_id': userId,
-      'place_id': placeId,
+      'user_id': userIdInt,
+      'place_id': placeIdInt,
     });
-    print('✅ Added to favorites with ID: $id');
     return id;
   }
 
-  Future<int> removeFromFavorites(int userId, int placeId) async {
-    print('🗑️ Removing place $placeId from favorites for user $userId');
+  Future<int> removeFromFavorites(dynamic userId, dynamic placeId) async {
+    final userIdInt = userId is int ? userId : int.parse(userId.toString());
+    final placeIdInt = placeId is int ? placeId : int.parse(placeId.toString());
+    
     Database db = await database;
     final count = await db.delete(
       'favorites',
       where: 'user_id = ? AND place_id = ?',
-      whereArgs: [userId, placeId],
+      whereArgs: [userIdInt, placeIdInt],
     );
-    print('✅ Removed $count favorite(s)');
     return count;
   }
 
-  Future<List<Map<String, dynamic>>> getFavoritePlaces(int userId) async {
+  Future<List<Map<String, dynamic>>> getFavoritePlaces(dynamic userId) async {
+    final userIdInt = userId is int ? userId : int.parse(userId.toString());
+    
     Database db = await database;
     return await db.rawQuery('''
       SELECT p.* FROM places p
       INNER JOIN favorites f ON p.id = f.place_id
       WHERE f.user_id = ?
-    ''', [userId]);
+    ''', [userIdInt]);
   }
 
-  Future<bool> isPlaceFavorite(int userId, int placeId) async {
+  Future<bool> isPlaceFavorite(dynamic userId, dynamic placeId) async {
+    final userIdInt = userId is int ? userId : int.parse(userId.toString());
+    final placeIdInt = placeId is int ? placeId : int.parse(placeId.toString());
+    
     Database db = await database;
     List<Map<String, dynamic>> results = await db.query(
       'favorites',
       where: 'user_id = ? AND place_id = ?',
-      whereArgs: [userId, placeId],
+      whereArgs: [userIdInt, placeIdInt],
     );
     return results.isNotEmpty;
   }
 
   Future<bool> placeExists(String nameEng) async {
-    print('🔍 Checking if place exists: $nameEng');
+    // Checking if place exists: $nameEng
     Database db = await database;
     List<Map<String, dynamic>> results = await db.query(
       'places',
@@ -347,7 +344,7 @@ class DatabaseHelper {
       where: 'name_eng = ?',
       whereArgs: [nameEng],
     );
-    print('✅ Updated $count place(s)');
+    // Updated $count place(s)
     return count;
   }
 
@@ -369,7 +366,7 @@ class DatabaseHelper {
   }
 
   Future<List<Map<String, dynamic>>> getChatMessages(int? userId) async {
-    print('🔍 Fetching chat messages');
+    // Fetching chat messages
     Database db = await database;
     final messages = await db.query(
       'chat_messages',
@@ -377,18 +374,18 @@ class DatabaseHelper {
       whereArgs: userId != null ? [userId] : null,
       orderBy: 'timestamp ASC',
     );
-    print('✅ Found ${messages.length} chat messages');
+    // Found ${messages.length} chat messages
     return messages;
   }
 
   Future<void> clearChatMessages(int? userId) async {
-    print('🗑️ Clearing chat messages');
+    // Clearing chat messages
     Database db = await database;
     await db.delete(
       'chat_messages',
       where: userId != null ? 'user_id = ?' : null,
       whereArgs: userId != null ? [userId] : null,
     );
-    print('✅ Chat messages cleared');
+    // Chat messages cleared
   }
 }

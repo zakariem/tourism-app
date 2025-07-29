@@ -68,7 +68,6 @@ class RecommendationService {
 
   Future<String?> getRecommendedCategory(List<double> features) async {
     await loadModel();
-    print('[RecommendationService] Features for recommendation: $features');
 
     // If ML is not available, use a simple fallback recommendation
     if (!_mlAvailable || _interpreter == null) {

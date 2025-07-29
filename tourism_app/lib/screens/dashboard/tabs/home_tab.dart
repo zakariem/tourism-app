@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
 import 'package:tourism_app/providers/user_behavior_provider.dart';
+import 'package:tourism_app/providers/favorites_provider.dart';
 import 'package:tourism_app/services/places_service.dart';
 import 'package:tourism_app/services/recommendation_service.dart';
 import 'package:tourism_app/utils/app_colors.dart';
@@ -31,40 +32,31 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   bool _isRecommending = false;
   double _scrollOffset = 0.0;
 
-  late AnimationController _animationController;
   late AnimationController _heroAnimationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _slideAnimation;
   late Animation<double> _heroParallaxAnimation;
 
   @override
   void initState() {
     super.initState();
-    print('🚀 HomeTab initState called');
+    // print('🚀 HomeTab initState called');
     _loadPlaces();
     _loadLastRecommendation();
     _maybeRecommend();
     _setupAnimations();
     _setupScrollListener();
+    _loadFavorites();
+  }
+
+  Future<void> _loadFavorites() async {
+    final favoritesProvider =
+        Provider.of<FavoritesProvider>(context, listen: false);
+    await favoritesProvider.loadFavorites();
   }
 
   void _setupAnimations() {
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-
     _heroAnimationController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-
-    _slideAnimation = Tween<double>(begin: 50.0, end: 0.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
     );
 
     _heroParallaxAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -72,7 +64,6 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           parent: _heroAnimationController, curve: Curves.easeInOut),
     );
 
-    _animationController.forward();
     _heroAnimationController.repeat(reverse: true);
   }
 
@@ -88,46 +79,33 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
-    _animationController.dispose();
     _heroAnimationController.dispose();
     super.dispose();
   }
 
   Future<void> _loadPlaces() async {
-    print('🔄 _loadPlaces called');
+    if (!mounted) return;
+
     setState(() => _isLoading = true);
 
     try {
-      print('🔄 Loading places from Node.js server...');
       final places = await PlacesService.getAllPlaces();
-      print('📊 Loaded ${places.length} places from Node.js server');
 
-      if (places.isNotEmpty) {
-        print(
-            '📍 First place: ${places.first['name_eng']} (${places.first['category']})');
-        print(
-            '📍 Last place: ${places.last['name_eng']} (${places.last['category']})');
-
-        // Debug: Check image fields
-        final firstPlace = places.first;
-        print('🔍 Debug - First place image fields:');
-        print('   image_path: ${firstPlace['image_path']}');
-        print(
-            '   image_data: ${firstPlace['image_data'] != null ? 'Present' : 'Not present'}');
-        print('   image_url: ${firstPlace['image_url']}');
-      } else {
-        print('⚠️ No places found in Node.js server!');
-      }
+      if (!mounted) return;
 
       setState(() {
         _places = places;
         _filteredPlaces = places;
         _isLoading = false;
       });
-      print('✅ Places loaded successfully');
+
+      // Apply current filters after loading
+      _onSearchChanged(_searchController.text);
     } catch (e) {
       print('❌ Error loading places: $e');
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -144,23 +122,40 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   }
 
   void _maybeRecommend() async {
-    if (_isRecommending) return;
+    if (_isRecommending || !mounted) return;
+
     setState(() => _isRecommending = true);
-    final behavior = Provider.of<UserBehaviorProvider>(context, listen: false);
-    final recommendedCategory = await RecommendationService()
-        .getRecommendedCategory(behavior.featureVector);
-    if (recommendedCategory != null &&
-        recommendedCategory != _recommendedCategory) {
-      final places =
-          await PlacesService.getPlacesByCategory(recommendedCategory);
-      setState(() {
-        _recommendedCategory = recommendedCategory;
-        _recommendedPlaces = places;
-      });
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('last_recommended_category', recommendedCategory);
+
+    try {
+      final behavior =
+          Provider.of<UserBehaviorProvider>(context, listen: false);
+      final recommendedCategory = await RecommendationService()
+          .getRecommendedCategory(behavior.featureVector);
+
+      if (recommendedCategory != null &&
+          recommendedCategory != _recommendedCategory &&
+          mounted) {
+        final places =
+            await PlacesService.getPlacesByCategory(recommendedCategory);
+
+        if (mounted) {
+          setState(() {
+            _recommendedCategory = recommendedCategory;
+            _recommendedPlaces = places;
+          });
+
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(
+              'last_recommended_category', recommendedCategory);
+        }
+      }
+    } catch (e) {
+      print('❌ Error getting recommendations: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isRecommending = false);
+      }
     }
-    setState(() => _isRecommending = false);
   }
 
   void _onSearchChanged(String query) {
@@ -169,7 +164,8 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       List<Map<String, dynamic>> categoryFiltered = _places;
       if (_selectedCategory != 'all') {
         categoryFiltered = _places.where((place) {
-          return place['category'] == _selectedCategory;
+          final category = place['category']?.toString().toLowerCase() ?? '';
+          return category == _selectedCategory.toLowerCase();
         }).toList();
       }
 
@@ -177,11 +173,19 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       if (query.isEmpty) {
         _filteredPlaces = categoryFiltered;
       } else {
+        final searchQuery = query.toLowerCase().trim();
         _filteredPlaces = categoryFiltered.where((place) {
-          final name = place['name_eng']?.toLowerCase() ?? '';
-          final desc = place['desc_eng']?.toLowerCase() ?? '';
-          return name.contains(query.toLowerCase()) ||
-              desc.contains(query.toLowerCase());
+          final nameEng = place['name_eng']?.toString().toLowerCase() ?? '';
+          final nameSom = place['name_som']?.toString().toLowerCase() ?? '';
+          final descEng = place['desc_eng']?.toString().toLowerCase() ?? '';
+          final descSom = place['desc_som']?.toString().toLowerCase() ?? '';
+          final location = place['location']?.toString().toLowerCase() ?? '';
+
+          return nameEng.contains(searchQuery) ||
+              nameSom.contains(searchQuery) ||
+              descEng.contains(searchQuery) ||
+              descSom.contains(searchQuery) ||
+              location.contains(searchQuery);
         }).toList();
       }
     });
@@ -189,10 +193,10 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    print('🎨 Building HomeTab UI');
-    print('🎨 _isLoading: $_isLoading');
-    print('🎨 _places.length: ${_places.length}');
-    print('🎨 _filteredPlaces.length: ${_filteredPlaces.length}');
+    // print('🎨 Building HomeTab UI');
+    // print('🎨 _isLoading: $_isLoading');
+    // print('🎨 _places.length: ${_places.length}');
+    // print('🎨 _filteredPlaces.length: ${_filteredPlaces.length}');
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -259,6 +263,9 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: _recommendedPlaces.length,
               itemBuilder: (context, index) {
+                if (index >= _recommendedPlaces.length) {
+                  return const SizedBox.shrink();
+                }
                 final place = _recommendedPlaces[index];
                 return Container(
                   margin: const EdgeInsets.only(right: 16),
@@ -279,6 +286,10 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   Widget _buildTrendingSection(LanguageProvider languageProvider) {
     final trendingPlaces = _places.take(5).toList();
 
+    if (trendingPlaces.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
     return SliverToBoxAdapter(
       child: Column(
         children: [
@@ -290,6 +301,9 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: trendingPlaces.length,
               itemBuilder: (context, index) {
+                if (index >= trendingPlaces.length) {
+                  return const SizedBox.shrink();
+                }
                 final place = trendingPlaces[index];
                 return Container(
                   margin: const EdgeInsets.only(right: 16),
@@ -308,23 +322,16 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   }
 
   Widget _buildAllPlacesSection(LanguageProvider languageProvider) {
-    print('🔍 Building All Places Section');
-    print('📊 _isLoading: $_isLoading');
-    print('📊 _filteredPlaces.length: ${_filteredPlaces.length}');
-    print('📊 _places.length: ${_places.length}');
-
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
-          print('🔍 Building item at index: $index');
-
           if (index == 0) {
-            print('📝 Building section header');
+            // Building section header
             return _buildSectionHeader('All Places', Icons.explore);
           }
 
           if (_isLoading) {
-            print('⏳ Showing loading indicator');
+            // print('⏳ Showing loading indicator');
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(50),
@@ -334,7 +341,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           }
 
           if (_filteredPlaces.isEmpty) {
-            print('⚠️ No places to display');
+            // print('⚠️ No places to display');
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(50),
@@ -355,11 +362,18 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: () async {
-                        print('🔄 Manual reload triggered');
-                        await _loadPlaces();
-                      },
-                      child: Text('Reload Places'),
+                      onPressed: _isLoading
+                          ? null
+                          : () async {
+                              await _loadPlaces();
+                            },
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Reload Places'),
                     ),
                   ],
                 ),
@@ -369,13 +383,10 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
 
           final placeIndex = index - 1;
           if (placeIndex >= _filteredPlaces.length) {
-            print(
-                '⚠️ Index $placeIndex out of bounds for ${_filteredPlaces.length} places');
-            return null;
+            return const SizedBox.shrink();
           }
 
           final place = _filteredPlaces[placeIndex];
-          print('📍 Building place card for: ${place['name_eng']}');
           return Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ModernPlaceCard(
@@ -393,7 +404,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   }
 
   Widget _buildEnhancedHeroBanner(LanguageProvider languageProvider) {
-    return Container(
+    return SizedBox(
       height: 280,
       child: Stack(
         children: [
@@ -406,12 +417,12 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                     -_scrollOffset * 0.5 + _heroParallaxAnimation.value * 10),
                 child: Container(
                   height: 300,
-                  decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.only(
+                  decoration: const BoxDecoration(
+                    borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(40),
                       bottomRight: Radius.circular(40),
                     ),
-                    image: const DecorationImage(
+                    image: DecorationImage(
                       image: AssetImage('assets/places/liido.jpg'),
                       fit: BoxFit.cover,
                     ),
@@ -466,7 +477,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.location_on,
+                                const Icon(Icons.location_on,
                                     color: Colors.white, size: 16),
                                 const SizedBox(width: 4),
                                 Text(
@@ -544,11 +555,15 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: _buildStatCard(
-              icon: Icons.favorite,
-              title: 'Favorites',
-              value: '12',
-              color: Colors.red,
+            child: Consumer<FavoritesProvider>(
+              builder: (context, favoritesProvider, child) {
+                return _buildStatCard(
+                  icon: Icons.favorite,
+                  title: 'Favorites',
+                  value: '${favoritesProvider.favorites.length}',
+                  color: Colors.red,
+                );
+              },
             ),
           ),
           const SizedBox(width: 12),
@@ -556,7 +571,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
             child: _buildStatCard(
               icon: Icons.star,
               title: 'Rating',
-              value: '4.8',
+              value: '4.8', // TODO: Calculate average rating
               color: Colors.orange,
             ),
           ),
@@ -637,17 +652,22 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
             hintStyle: GoogleFonts.poppins(color: Colors.grey[500]),
             prefixIcon: Container(
               padding: const EdgeInsets.all(12),
-              child: Icon(Icons.search, color: AppColors.primary),
+              child: const Icon(Icons.search, color: AppColors.primary),
             ),
-            suffixIcon: _searchController.text.isNotEmpty
-                ? IconButton(
-                    icon: Icon(Icons.clear, color: Colors.grey[500]),
-                    onPressed: () {
-                      _searchController.clear();
-                      _onSearchChanged('');
-                    },
-                  )
-                : null,
+            suffixIcon: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _searchController,
+              builder: (context, value, child) {
+                return value.text.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear, color: Colors.grey[500]),
+                        onPressed: () {
+                          _searchController.clear();
+                          _onSearchChanged('');
+                        },
+                      )
+                    : const SizedBox.shrink();
+              },
+            ),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 16),
           ),
@@ -764,7 +784,9 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           ),
           const Spacer(),
           TextButton(
-            onPressed: () {},
+            onPressed: () {
+              // TODO: Navigate to see all places
+            },
             child: Text(
               'See All',
               style: GoogleFonts.poppins(

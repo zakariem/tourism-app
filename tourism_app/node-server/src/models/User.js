@@ -24,6 +24,10 @@ const UserSchema = new mongoose.Schema({
         enum: ['tourist', 'admin'],
         default: 'tourist'
     },
+    favorites: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Place'
+    }],
     createdAt: {
         type: Date,
         default: Date.now

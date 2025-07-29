@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
 import 'package:tourism_app/providers/auth_provider.dart';
-import 'package:tourism_app/services/database_helper.dart';
+import 'package:tourism_app/providers/favorites_provider.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:tourism_app/screens/place_details_screen.dart';
 
@@ -26,8 +26,6 @@ class ModernPlaceCard extends StatefulWidget {
 
 class _ModernPlaceCardState extends State<ModernPlaceCard>
     with SingleTickerProviderStateMixin {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
-  bool _isFavorite = false;
   bool _isLoading = false;
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -35,8 +33,8 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
   @override
   void initState() {
     super.initState();
-    _checkFavoriteStatus();
     _setupAnimation();
+    _checkFavoriteStatus();
   }
 
   void _setupAnimation() {
@@ -56,16 +54,13 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
   }
 
   Future<void> _checkFavoriteStatus() async {
-    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
-    if (user != null && user['_id'] != null) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final favoritesProvider =
+        Provider.of<FavoritesProvider>(context, listen: false);
+
+    if (authProvider.isAuthenticated && widget.place['_id'] != null) {
       try {
-        final isFavorite = await _dbHelper.isPlaceFavorite(
-          user['_id'],
-          widget.place['id'],
-        );
-        if (mounted) {
-          setState(() => _isFavorite = isFavorite);
-        }
+        await favoritesProvider.checkFavoriteStatus(widget.place['_id']);
       } catch (e) {
         print('Error checking favorite status: $e');
       }
@@ -75,33 +70,73 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
   Future<void> _toggleFavorite() async {
     if (_isLoading) return;
 
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final favoritesProvider =
+        Provider.of<FavoritesProvider>(context, listen: false);
+
+    if (!authProvider.isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please login to add favorites'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (widget.place['_id'] == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid place data'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
-    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
-    if (user != null && user['_id'] != null) {
-      try {
-        if (_isFavorite) {
-          await _dbHelper.removeFromFavorites(user['_id'], widget.place['id']);
-        } else {
-          await _dbHelper.addToFavorites(user['_id'], widget.place['id']);
-        }
+    try {
+      final success = await favoritesProvider.toggleFavorite(
+        widget.place['_id'],
+        widget.place,
+      );
 
-        if (mounted) {
-          setState(() {
-            _isFavorite = !_isFavorite;
-            _isLoading = false;
-          });
-          widget.onFavoriteChanged?.call();
-        }
-      } catch (e) {
-        print('Error toggling favorite: $e');
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
-      }
-    } else {
       if (mounted) {
         setState(() => _isLoading = false);
+
+        if (success) {
+          widget.onFavoriteChanged?.call();
+
+          final isFavorite = favoritesProvider.isFavorite(widget.place['_id']);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isFavorite ? 'Added to favorites' : 'Removed from favorites',
+              ),
+              backgroundColor: isFavorite ? Colors.green : Colors.orange,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to update favorites'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error toggling favorite: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -124,254 +159,259 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
     final languageProvider = Provider.of<LanguageProvider>(context);
     final category = widget.place['category'] ?? 'unknown';
 
-    // Use image_url if available, otherwise fall back to image_path
-    final imagePath = widget.place['image_url'] ?? widget.place['image_path'];
+    return Consumer<FavoritesProvider>(
+      builder: (context, favoritesProvider, child) {
+        final isFavorite = widget.place['_id'] != null
+            ? favoritesProvider.isFavorite(widget.place['_id'])
+            : false;
 
-    // Debug logging
-    print('🖼️ ModernPlaceCard - ${widget.place['name_eng']}:');
-    print('   image_path: ${widget.place['image_path']}');
-    print('   image_url: ${widget.place['image_url']}');
-    print('   final imagePath: $imagePath');
+        // Use image_url if available, otherwise fall back to image_path
+        final imagePath =
+            widget.place['image_url'] ?? widget.place['image_path'];
 
-    final name = languageProvider.currentLanguage == 'som'
-        ? widget.place['name_som'] ?? widget.place['name_eng'] ?? 'Unknown'
-        : widget.place['name_eng'] ?? 'Unknown';
+        final name = languageProvider.currentLanguage == 'som'
+            ? widget.place['name_som'] ?? widget.place['name_eng'] ?? 'Unknown'
+            : widget.place['name_eng'] ?? 'Unknown';
 
-    final description = languageProvider.currentLanguage == 'som'
-        ? widget.place['desc_som'] ??
-            widget.place['desc_eng'] ??
-            'No description'
-        : widget.place['desc_eng'] ?? 'No description';
-    final location = widget.place['location'] ?? 'Unknown Location';
+        final description = languageProvider.currentLanguage == 'som'
+            ? widget.place['desc_som'] ??
+                widget.place['desc_eng'] ??
+                'No description'
+            : widget.place['desc_eng'] ?? 'No description';
+        final location = widget.place['location'] ?? 'Unknown Location';
 
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      child: GestureDetector(
-        onTap: _onCardTap,
-        child: Container(
-          width: 280,
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Image Section
-                Container(
-                  height: 170,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      topRight: Radius.circular(12),
-                    ),
+        return ScaleTransition(
+          scale: _scaleAnimation,
+          child: GestureDetector(
+            onTap: _onCardTap,
+            child: Container(
+              width: 280,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
-                  child: Stack(
-                    children: [
-                      // Image
-                      ClipRRect(
+                ],
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Image Section
+                    Container(
+                      height: 170,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(12),
                           topRight: Radius.circular(12),
                         ),
-                        child: _buildImage(imagePath),
                       ),
-
-                      // Gradient Overlay
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(20),
-                            topRight: Radius.circular(20),
-                          ),
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withOpacity(0.3),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // Category Badge
-                      Positioned(
-                        top: 12,
-                        left: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _getCategoryColor(category).withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            languageProvider.getText(category),
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Favorite Button
-                      Positioned(
-                        top: 12,
-                        right: 12,
-                        child: GestureDetector(
-                          onTap: _toggleFavorite,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              shape: BoxShape.circle,
-                            ),
-                            child: _isLoading
-                                ? SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: AppColors.primary,
-                                    ),
-                                  )
-                                : Icon(
-                                    _isFavorite
-                                        ? Icons.favorite
-                                        : Icons.favorite_border,
-                                    color: _isFavorite
-                                        ? Colors.red
-                                        : Colors.grey[600],
-                                    size: 20,
-                                  ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Content Section
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Title
-                      Text(
-                        name,
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // Location
-                      Row(
+                      child: Stack(
                         children: [
-                          Icon(
-                            Icons.location_on,
-                            color: AppColors.primary,
-                            size: 16,
+                          // Image
+                          ClipRRect(
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(12),
+                              topRight: Radius.circular(12),
+                            ),
+                            child: _buildImage(imagePath),
                           ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              location,
-                              style: GoogleFonts.poppins(
-                                color: Colors.grey[600],
-                                fontSize: 14,
+
+                          // Gradient Overlay
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(20),
+                                topRight: Radius.circular(20),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withOpacity(0.3),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          // Category Badge
+                          Positioned(
+                            top: 12,
+                            left: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: _getCategoryColor(category)
+                                    .withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                languageProvider.getText(category),
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Favorite Button
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: GestureDetector(
+                              onTap: _toggleFavorite,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.9),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: _isLoading
+                                    ? SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: AppColors.primary,
+                                        ),
+                                      )
+                                    : Icon(
+                                        isFavorite
+                                            ? Icons.favorite
+                                            : Icons.favorite_border,
+                                        color: isFavorite
+                                            ? Colors.red
+                                            : Colors.grey[600],
+                                        size: 20,
+                                      ),
+                              ),
                             ),
                           ),
                         ],
                       ),
+                    ),
 
-                      const SizedBox(height: 8),
-
-                      // Description
-                      Text(
-                        description,
-                        style: GoogleFonts.poppins(
-                          color: Colors.grey[600],
-                          fontSize: 13,
-                          height: 1.4,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Rating and Visit Button
-                      Row(
+                    // Content Section
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Rating
+                          // Title
+                          Text(
+                            name,
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[800],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // Location
                           Row(
                             children: [
-                              Icon(Icons.star, color: Colors.orange, size: 16),
+                              Icon(
+                                Icons.location_on,
+                                color: AppColors.primary,
+                                size: 16,
+                              ),
                               const SizedBox(width: 4),
-                              Text(
-                                '4.8',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.grey[700],
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                              Expanded(
+                                child: Text(
+                                  location,
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.grey[600],
+                                    fontSize: 14,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
                           ),
 
-                          const Spacer(),
+                          const SizedBox(height: 8),
 
-                          // Visit Button
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(20),
+                          // Description
+                          Text(
+                            description,
+                            style: GoogleFonts.poppins(
+                              color: Colors.grey[600],
+                              fontSize: 13,
+                              height: 1.4,
                             ),
-                            child: Text(
-                              'Visit',
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Rating and Visit Button
+                          Row(
+                            children: [
+                              // Rating
+                              Row(
+                                children: [
+                                  Icon(Icons.star,
+                                      color: Colors.orange, size: 16),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '4.8',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.grey[700],
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
+
+                              const Spacer(),
+
+                              // Visit Button
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  'Visit',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

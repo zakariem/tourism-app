@@ -24,6 +24,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', require('./src/routes/authRoutes'));
 app.use('/api/places', require('./src/routes/placeRoutes'));
 app.use('/api/bookings', require('./src/routes/bookingRoutes'));
+app.use('/api/favorites', require('./src/routes/favoritesRoutes'));
 
 // Basic route for testing
 app.get('/', (req, res) => {

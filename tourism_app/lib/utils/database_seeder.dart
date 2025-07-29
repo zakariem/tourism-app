@@ -5,8 +5,8 @@ class DatabaseSeeder {
   static final DatabaseHelper _dbHelper = DatabaseHelper();
 
   static Future<void> seedTouristPlaces() async {
-    print('🌱 Starting database seeding...');
-    print('Checking for new tourist places to seed...');
+    // print('🌱 Starting database seeding...');
+    // print('Checking for new tourist places to seed...');
 
     // Add a simple test place first to verify database is working
     final testPlace = {
@@ -22,7 +22,7 @@ class DatabaseSeeder {
     try {
       // Try to insert test place first
       await _dbHelper.insertPlace(testPlace);
-      print('✅ Test place inserted successfully');
+      // print('✅ Test place inserted successfully');
     } catch (e) {
       print('❌ Error inserting test place: $e');
     }
@@ -315,51 +315,51 @@ class DatabaseSeeder {
         }
       }
 
-      print('\n=== Seeding Summary ===');
-      print('New places added: $newPlacesCount');
-      print('Existing places skipped: $skippedPlacesCount');
-      print('Total places in seed data: ${places.length}');
-      print('🌱 Database seeding completed!');
+      // print('\n=== Seeding Summary ===');
+      // print('New places added: $newPlacesCount');
+      // print('Existing places skipped: $skippedPlacesCount');
+      // print('Total places in seed data: ${places.length}');
+      // print('🌱 Database seeding completed!');
     } catch (e) {
       print('❌ Error during seeding: $e');
     }
   }
 
   static Future<void> seedDatabase() async {
-    print('🌱 Starting database seeding process...');
+    // print('🌱 Starting database seeding process...');
 
     // Check if database is empty
     final dbHelper = DatabaseHelper();
     final placesCount = await dbHelper.getPlacesCount();
-    print('📊 Current places in database: $placesCount');
+    // print('📊 Current places in database: $placesCount');
 
     if (placesCount == 0) {
-      print('⚠️ Database is empty, forcing reseed...');
+      // print('⚠️ Database is empty, forcing reseed...');
     }
 
     await seedTouristPlaces();
 
     // Verify seeding was successful
     final finalPlacesCount = await dbHelper.getPlacesCount();
-    print('📊 Final places in database: $finalPlacesCount');
+    // print('📊 Final places in database: $finalPlacesCount');
 
     if (finalPlacesCount == 0) {
       print('❌ WARNING: Database is still empty after seeding!');
     } else {
-      print('✅ Database seeding completed successfully!');
+      // print('✅ Database seeding completed successfully!');
     }
   }
 
   // Method to force reseed the database (clears existing data and reseeds)
   static Future<void> forceReseed() async {
-    print('🔄 Force reseeding database...');
+    // print('🔄 Force reseeding database...');
 
     try {
       Database db = await _dbHelper.database;
 
       // Clear existing places
       await db.delete('places');
-      print('🗑️ Cleared existing places');
+      // print('🗑️ Cleared existing places');
 
       // Reseed
       await seedTouristPlaces();
@@ -372,7 +372,7 @@ class DatabaseSeeder {
 
   // Method to update existing places (optional - if you want to update data for existing places)
   static Future<void> updateExistingPlaces() async {
-    print('Updating existing places with new data...');
+    // print('Updating existing places with new data...');
 
     final places = [
       // Same places array as above
@@ -399,8 +399,8 @@ class DatabaseSeeder {
       }
 
       print('\n=== Update Summary ===');
-      print('Places updated: $updatedCount');
-      print('New places added: $addedCount');
+      // print('Places updated: $updatedCount');
+      // print('New places added: $addedCount');
     } catch (e) {
       print('Error during update: $e');
     }
