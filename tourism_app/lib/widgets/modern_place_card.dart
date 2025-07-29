@@ -309,98 +309,123 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Title
-                          Text(
-                            name,
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[800],
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isSmallCard = constraints.maxWidth < 300;
+                              return Text(
+                                name,
+                                style: GoogleFonts.poppins(
+                                  fontSize: isSmallCard ? 16 : 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[800],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              );
+                            },
                           ),
 
                           const SizedBox(height: 8),
 
                           // Location
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.location_on,
-                                color: AppColors.primary,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  location,
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.grey[600],
-                                    fontSize: 14,
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isSmallCard = constraints.maxWidth < 300;
+                              return Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_on,
+                                    color: AppColors.primary,
+                                    size: isSmallCard ? 14 : 16,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                                  SizedBox(width: isSmallCard ? 2 : 4),
+                                  Expanded(
+                                    child: Text(
+                                      location,
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.grey[600],
+                                        fontSize: isSmallCard ? 12 : 14,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
 
                           const SizedBox(height: 8),
 
                           // Description
-                          Text(
-                            description,
-                            style: GoogleFonts.poppins(
-                              color: Colors.grey[600],
-                              fontSize: 13,
-                              height: 1.4,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isSmallCard = constraints.maxWidth < 300;
+                              return Text(
+                                description,
+                                style: GoogleFonts.poppins(
+                                  color: Colors.grey[600],
+                                  fontSize: isSmallCard ? 11 : 13,
+                                  height: 1.4,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              );
+                            },
                           ),
 
                           const SizedBox(height: 12),
 
                           // Rating and Visit Button
-                          Row(
-                            children: [
-                              // Rating
-                              Row(
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isSmallCard = constraints.maxWidth < 300;
+                              return Row(
                                 children: [
-                                  Icon(Icons.star,
-                                      color: Colors.orange, size: 16),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '4.8',
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.grey[700],
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
+                                  // Rating
+                                  Flexible(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.star,
+                                            color: Colors.orange, 
+                                            size: isSmallCard ? 14 : 16),
+                                        SizedBox(width: isSmallCard ? 2 : 4),
+                                        Text(
+                                          '4.8',
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.grey[700],
+                                            fontSize: isSmallCard ? 12 : 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  const Spacer(),
+
+                                  // Visit Button
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: isSmallCard ? 12 : 16, 
+                                        vertical: isSmallCard ? 6 : 8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      'Visit',
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: isSmallCard ? 10 : 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ],
-                              ),
-
-                              const Spacer(),
-
-                              // Visit Button
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  'Visit',
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
+                              );
+                            },
                           ),
                         ],
                       ),

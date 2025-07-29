@@ -9,6 +9,9 @@ import 'package:tourism_app/services/recommendation_service.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:tourism_app/widgets/modern_place_card.dart';
 import 'package:tourism_app/widgets/language_toggle.dart';
+import 'package:tourism_app/screens/dashboard/see_all_recommended_screen.dart';
+import 'package:tourism_app/screens/dashboard/see_all_trending_screen.dart';
+import 'package:tourism_app/screens/dashboard/see_all_places_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
@@ -292,7 +295,21 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     return SliverToBoxAdapter(
       child: Column(
         children: [
-          _buildSectionHeader('Recommended for You', Icons.recommend),
+          _buildSectionHeader(
+            'Recommended for You', 
+            Icons.recommend,
+            onSeeAllPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SeeAllRecommendedScreen(
+                    recommendedPlaces: _recommendedPlaces,
+                    recommendedCategory: _recommendedCategory,
+                  ),
+                ),
+              );
+            },
+          ),
           SizedBox(
             height: 340,
             child: ListView.builder(
@@ -330,7 +347,20 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     return SliverToBoxAdapter(
       child: Column(
         children: [
-          _buildSectionHeader('Trending Now', Icons.trending_up),
+          _buildSectionHeader(
+            'Trending Now', 
+            Icons.trending_up,
+            onSeeAllPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SeeAllTrendingScreen(
+                    trendingPlaces: _places, // Pass all places for trending
+                  ),
+                ),
+              );
+            },
+          ),
           SizedBox(
             height: 350,
             child: ListView.builder(
@@ -364,7 +394,20 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
         (context, index) {
           if (index == 0) {
             // Building section header
-            return _buildSectionHeader('All Places', Icons.explore);
+            return _buildSectionHeader(
+              'All Places', 
+              Icons.explore,
+              onSeeAllPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SeeAllPlacesScreen(
+                      allPlaces: _places,
+                    ),
+                  ),
+                );
+              },
+            );
           }
 
           if (_isLoading) {
@@ -888,7 +931,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
+  Widget _buildSectionHeader(String title, IconData icon, {VoidCallback? onSeeAllPressed}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
@@ -912,9 +955,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           ),
           const Spacer(),
           TextButton(
-            onPressed: () {
-              // TODO: Navigate to see all places
-            },
+            onPressed: onSeeAllPressed,
             child: Text(
               'See All',
               style: GoogleFonts.poppins(
