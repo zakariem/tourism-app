@@ -1,49 +1,22 @@
 const mongoose = require('mongoose');
 
 const PlaceSchema = new mongoose.Schema({
-    name: {
+    name_eng: { type: String, required: true, trim: true },
+    name_som: { type: String, required: true, trim: true },
+    desc_eng: { type: String, required: true },
+    desc_som: { type: String, required: true },
+    location: { type: String, required: true },
+    category: {
         type: String,
         required: true,
-        trim: true
+        enum: ['beach', 'historical', 'cultural', 'religious', 'suburb', 'urban park']
     },
-    description: {
-        type: String,
-        required: true
-    },
-    location: {
-        type: String,
-        required: true
-    },
-    images: [
-        {
-            url: {
-                type: String,
-                required: true
-            },
-            public_id: { // Useful if using cloud storage like Cloudinary
-                type: String
-            }
-        }
-    ],
-    pricePerPerson: {
-        type: Number,
-        required: true,
-        min: 0
-    },
-    maxCapacity: {
-        type: Number,
-        required: true,
-        min: 1
-    },
-    availableDates: [
-        {
-            type: Date
-        }
-    ],
-    createdAt: {
-        type: Date,
-        default: Date.now
-    }
+    image_path: { type: String, required: true },
+    image_data: { type: String }, // Base64 encoded image data
+    pricePerPerson: { type: Number, min: 0, default: 0 },
+    maxCapacity: { type: Number, min: 1, default: 10 },
+    availableDates: [{ type: Date }],
+    createdAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('Place', PlaceSchema);

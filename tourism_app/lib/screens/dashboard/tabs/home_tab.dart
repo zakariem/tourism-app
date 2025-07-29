@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
 import 'package:tourism_app/providers/user_behavior_provider.dart';
-import 'package:tourism_app/services/database_helper.dart';
+import 'package:tourism_app/services/places_service.dart';
 import 'package:tourism_app/services/recommendation_service.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:tourism_app/widgets/modern_place_card.dart';
@@ -10,7 +10,6 @@ import 'package:tourism_app/widgets/language_toggle.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
-import 'package:tourism_app/utils/database_seeder.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({Key? key}) : super(key: key);
@@ -20,7 +19,6 @@ class HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
@@ -42,6 +40,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    print('🚀 HomeTab initState called');
     _loadPlaces();
     _loadLastRecommendation();
     _maybeRecommend();
@@ -95,15 +94,39 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   }
 
   Future<void> _loadPlaces() async {
+    print('🔄 _loadPlaces called');
     setState(() => _isLoading = true);
+
     try {
-      final places = await _dbHelper.getAllPlaces();
+      print('🔄 Loading places from Node.js server...');
+      final places = await PlacesService.getAllPlaces();
+      print('📊 Loaded ${places.length} places from Node.js server');
+
+      if (places.isNotEmpty) {
+        print(
+            '📍 First place: ${places.first['name_eng']} (${places.first['category']})');
+        print(
+            '📍 Last place: ${places.last['name_eng']} (${places.last['category']})');
+
+        // Debug: Check image fields
+        final firstPlace = places.first;
+        print('🔍 Debug - First place image fields:');
+        print('   image_path: ${firstPlace['image_path']}');
+        print(
+            '   image_data: ${firstPlace['image_data'] != null ? 'Present' : 'Not present'}');
+        print('   image_url: ${firstPlace['image_url']}');
+      } else {
+        print('⚠️ No places found in Node.js server!');
+      }
+
       setState(() {
         _places = places;
         _filteredPlaces = places;
         _isLoading = false;
       });
+      print('✅ Places loaded successfully');
     } catch (e) {
+      print('❌ Error loading places: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -112,8 +135,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     final prefs = await SharedPreferences.getInstance();
     final lastCategory = prefs.getString('last_recommended_category');
     if (lastCategory != null) {
-      final dbHelper = DatabaseHelper();
-      final places = await dbHelper.getPlacesByCategory(lastCategory);
+      final places = await PlacesService.getPlacesByCategory(lastCategory);
       setState(() {
         _recommendedCategory = lastCategory;
         _recommendedPlaces = places;
@@ -129,8 +151,8 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
         .getRecommendedCategory(behavior.featureVector);
     if (recommendedCategory != null &&
         recommendedCategory != _recommendedCategory) {
-      final dbHelper = DatabaseHelper();
-      final places = await dbHelper.getPlacesByCategory(recommendedCategory);
+      final places =
+          await PlacesService.getPlacesByCategory(recommendedCategory);
       setState(() {
         _recommendedCategory = recommendedCategory;
         _recommendedPlaces = places;
@@ -143,10 +165,19 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
 
   void _onSearchChanged(String query) {
     setState(() {
+      // First filter by category
+      List<Map<String, dynamic>> categoryFiltered = _places;
+      if (_selectedCategory != 'all') {
+        categoryFiltered = _places.where((place) {
+          return place['category'] == _selectedCategory;
+        }).toList();
+      }
+
+      // Then filter by search query
       if (query.isEmpty) {
-        _filteredPlaces = _places;
+        _filteredPlaces = categoryFiltered;
       } else {
-        _filteredPlaces = _places.where((place) {
+        _filteredPlaces = categoryFiltered.where((place) {
           final name = place['name_eng']?.toLowerCase() ?? '';
           final desc = place['desc_eng']?.toLowerCase() ?? '';
           return name.contains(query.toLowerCase()) ||
@@ -158,74 +189,61 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final languageProvider = Provider.of<LanguageProvider>(context);
+    print('🎨 Building HomeTab UI');
+    print('🎨 _isLoading: $_isLoading');
+    print('🎨 _places.length: ${_places.length}');
+    print('🎨 _filteredPlaces.length: ${_filteredPlaces.length}');
 
-    return Consumer<UserBehaviorProvider>(
-      builder: (context, behavior, child) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _maybeRecommend();
-        });
-
-        return AnimatedBuilder(
-          animation: _animationController,
-          builder: (context, child) {
-            return Transform.translate(
-              offset: Offset(0, _slideAnimation.value),
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.primary.withOpacity(0.05),
-                        Colors.white,
-                        AppColors.primary.withOpacity(0.02),
-                      ],
-                    ),
-                  ),
-                  child: CustomScrollView(
-                    controller: _scrollController,
-                    slivers: [
-                      // Enhanced Hero Banner with Parallax
-                      SliverToBoxAdapter(
-                        child: _buildEnhancedHeroBanner(languageProvider),
-                      ),
-
-                      // Quick Stats Cards
-                      SliverToBoxAdapter(
-                        child: _buildQuickStatsCards(),
-                      ),
-
-                      // Modern Search Bar
-                      SliverToBoxAdapter(
-                        child: _buildModernSearchBar(languageProvider),
-                      ),
-
-                      // Enhanced Category Chips
-                      SliverToBoxAdapter(
-                        child: _buildEnhancedCategoryChips(languageProvider),
-                      ),
-
-                      // Recommended Section
-                      if (_recommendedCategory != null &&
-                          _recommendedPlaces.isNotEmpty)
-                        _buildRecommendedSection(languageProvider),
-
-                      // Trending Places Section
-                      _buildTrendingSection(languageProvider),
-
-                      // All Places Section
-                      _buildAllPlacesSection(languageProvider),
-                    ],
-                  ),
-                ),
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: SafeArea(
+        child: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            // Hero Banner
+            SliverToBoxAdapter(
+              child: _buildEnhancedHeroBanner(
+                Provider.of<LanguageProvider>(context, listen: false),
               ),
-            );
-          },
-        );
-      },
+            ),
+
+            // Quick Stats
+            SliverToBoxAdapter(
+              child: _buildQuickStatsCards(),
+            ),
+
+            // Search Bar
+            SliverToBoxAdapter(
+              child: _buildModernSearchBar(
+                Provider.of<LanguageProvider>(context, listen: false),
+              ),
+            ),
+
+            // Category Chips
+            SliverToBoxAdapter(
+              child: _buildEnhancedCategoryChips(
+                Provider.of<LanguageProvider>(context, listen: false),
+              ),
+            ),
+
+            // Recommended Section
+            if (_recommendedPlaces.isNotEmpty)
+              _buildRecommendedSection(
+                Provider.of<LanguageProvider>(context, listen: false),
+              ),
+
+            // Trending Section
+            _buildTrendingSection(
+              Provider.of<LanguageProvider>(context, listen: false),
+            ),
+
+            // All Places Section
+            _buildAllPlacesSection(
+              Provider.of<LanguageProvider>(context, listen: false),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -235,7 +253,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
         children: [
           _buildSectionHeader('Recommended for You', Icons.recommend),
           SizedBox(
-            height: 340, // Increased height to accommodate the new card design
+            height: 340,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -266,7 +284,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
         children: [
           _buildSectionHeader('Trending Now', Icons.trending_up),
           SizedBox(
-            height: 350, // Increased height to accommodate the new card design
+            height: 350,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -290,14 +308,23 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   }
 
   Widget _buildAllPlacesSection(LanguageProvider languageProvider) {
+    print('🔍 Building All Places Section');
+    print('📊 _isLoading: $_isLoading');
+    print('📊 _filteredPlaces.length: ${_filteredPlaces.length}');
+    print('📊 _places.length: ${_places.length}');
+
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
+          print('🔍 Building item at index: $index');
+
           if (index == 0) {
+            print('📝 Building section header');
             return _buildSectionHeader('All Places', Icons.explore);
           }
 
           if (_isLoading) {
+            print('⏳ Showing loading indicator');
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(50),
@@ -307,6 +334,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           }
 
           if (_filteredPlaces.isEmpty) {
+            print('⚠️ No places to display');
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(50),
@@ -325,6 +353,14 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                         fontSize: 16,
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () async {
+                        print('🔄 Manual reload triggered');
+                        await _loadPlaces();
+                      },
+                      child: Text('Reload Places'),
+                    ),
                   ],
                 ),
               ),
@@ -332,9 +368,14 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           }
 
           final placeIndex = index - 1;
-          if (placeIndex >= _filteredPlaces.length) return null;
+          if (placeIndex >= _filteredPlaces.length) {
+            print(
+                '⚠️ Index $placeIndex out of bounds for ${_filteredPlaces.length} places');
+            return null;
+          }
 
           final place = _filteredPlaces[placeIndex];
+          print('📍 Building place card for: ${place['name_eng']}');
           return Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ModernPlaceCard(
@@ -624,6 +665,8 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       {'key': 'historical', 'icon': Icons.account_balance},
       {'key': 'cultural', 'icon': Icons.palette},
       {'key': 'religious', 'icon': Icons.mosque},
+      {'key': 'suburb', 'icon': Icons.location_city},
+      {'key': 'urban park', 'icon': Icons.park},
     ];
 
     return Container(

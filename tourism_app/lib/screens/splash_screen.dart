@@ -22,6 +22,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initializeApp() async {
+    print('🚀 SplashScreen: Starting app initialization');
     // Add a small delay to show the splash screen
     await Future.delayed(const Duration(seconds: 2));
 
@@ -41,12 +42,16 @@ class _SplashScreenState extends State<SplashScreen> {
 
     // Navigate to appropriate screen
     print('Navigating to: ${isLoggedIn ? 'Dashboard' : 'Login'}');
+    print('🚀 About to navigate to DashboardScreen');
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (context) =>
-            isLoggedIn ? const DashboardScreen() : const LoginScreen(),
+        builder: (context) {
+          print('🚀 Building DashboardScreen route');
+          return isLoggedIn ? const DashboardScreen() : const LoginScreen();
+        },
       ),
     );
+    print('🚀 Navigation completed');
   }
 
   @override

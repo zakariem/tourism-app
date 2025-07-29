@@ -12,7 +12,8 @@ class AuthProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   Map<String, dynamic>? get currentUser => _currentUser;
 
-  static const String _baseUrl = 'http://10.0.2.2:9000/api/auth';
+  // Use localhost for web, 10.0.2.2 for Android emulator
+  static const String _baseUrl = 'http://localhost:9000/api/auth';
 
   Future<bool> login(String usernameOrEmail, String password) async {
     _isLoading = true;
@@ -22,15 +23,17 @@ class AuthProvider with ChangeNotifier {
       print('Attempting login for: $usernameOrEmail');
       print('Backend URL: $_baseUrl/login');
 
-      final response = await http.post(
-        Uri.parse('$_baseUrl/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': usernameOrEmail,
-          'username': usernameOrEmail,
-          'password': password,
-        }),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': usernameOrEmail,
+              'username': usernameOrEmail,
+              'password': password,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
 
       print('Login response status: ${response.statusCode}');
       print('Login response body: ${response.body}');
@@ -66,6 +69,17 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       print('Login error: $e');
       print('Error type: ${e.runtimeType}');
+
+      // Provide more specific error messages
+      String errorMessage = 'Login failed';
+      if (e.toString().contains('SocketException')) {
+        errorMessage =
+            'Cannot connect to server. Please check if the backend is running.';
+      } else if (e.toString().contains('TimeoutException')) {
+        errorMessage = 'Request timed out. Please try again.';
+      }
+
+      print('Error message: $errorMessage');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -172,7 +186,7 @@ class AuthProvider with ChangeNotifier {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
           },
-        );
+        ).timeout(const Duration(seconds: 5));
 
         print('Verify response status: ${response.statusCode}');
         print('Verify response body: ${response.body}');
@@ -194,6 +208,29 @@ class AuthProvider with ChangeNotifier {
       return false;
     } catch (e) {
       print('Auth check error: $e');
+      // If backend is not available, still allow local auth
+      final prefs = await SharedPreferences.getInstance();
+      final userString = prefs.getString('user');
+      if (userString != null) {
+        print('Backend unavailable, using local auth');
+        _currentUser = jsonDecode(userString);
+        notifyListeners();
+        return true;
+      }
+      return false;
+    }
+  }
+
+  Future<bool> isBackendAvailable() async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/health'),
+          )
+          .timeout(const Duration(seconds: 3));
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Backend not available: $e');
       return false;
     }
   }

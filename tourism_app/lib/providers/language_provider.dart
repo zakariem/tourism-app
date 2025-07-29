@@ -32,6 +32,8 @@ class LanguageProvider with ChangeNotifier {
       'historical': 'Historical',
       'cultural': 'Cultural',
       'religious': 'Religious',
+      'suburb': 'Suburb',
+      'urban park': 'Urban Park',
       'location': 'Location',
       'description': 'Description',
       'add_to_favorites': 'Add to Favorites',
@@ -67,6 +69,8 @@ class LanguageProvider with ChangeNotifier {
       'support_coming_soon':
           'Our support chat feature is under development. Stay tuned for updates!',
       'read_more': 'Read More',
+      'welcome': 'Welcome',
+      'explore_somalia': 'Explore Somalia',
     },
     'so': {
       'app_name': 'App-ka Dalxiiska',
@@ -92,6 +96,8 @@ class LanguageProvider with ChangeNotifier {
       'historical': 'Taariikhiga',
       'cultural': 'Dhaqanka',
       'religious': 'Diiniga',
+      'suburb': 'Degmo',
+      'urban park': 'Beer Magaalo',
       'location': 'Goobta',
       'description': 'Sharaxaada',
       'add_to_favorites': 'Ku Dar La Jecel yahay',
@@ -128,6 +134,8 @@ class LanguageProvider with ChangeNotifier {
       'support_coming_soon':
           'Astaamaha caawimaadka waa la horumarinayaa. La soco cusboonaysiinta!',
       'read_more': 'Akhri Wax Dheeraad ah',
+      'welcome': 'Ku Soo Dhowow',
+      'explore_somalia': 'Baah Soomaaliya',
     },
   };
 

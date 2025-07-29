@@ -24,10 +24,17 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
       onOpen: (db) {
         print('✅ Database opened successfully');
+        // Check if places table exists and has data
+        db.rawQuery('SELECT COUNT(*) as count FROM places').then((result) {
+          print('📊 Places table has ${result.first['count']} records');
+        }).catchError((e) {
+          print('❌ Error checking places table: $e');
+        });
       },
     );
   }
@@ -58,7 +65,7 @@ class DatabaseHelper {
         desc_eng TEXT NOT NULL,
         location TEXT NOT NULL,
         image_path TEXT,
-        category TEXT CHECK(category IN ('beach', 'historical', 'cultural', 'religious')) NOT NULL
+        category TEXT CHECK(category IN ('beach', 'historical', 'cultural', 'religious', 'suburb', 'urban park')) NOT NULL
       )
     ''');
     print('✅ Places table created');
@@ -91,6 +98,66 @@ class DatabaseHelper {
     print('✅ Chat messages table created');
 
     print('🎉 All database tables created successfully');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    print('🔄 Upgrading database from version $oldVersion to $newVersion');
+
+    if (oldVersion < 2) {
+      // Add new categories to the places table constraint
+      // Since SQLite doesn't support modifying CHECK constraints directly,
+      // we'll need to recreate the table with the new constraint
+      print('🔄 Updating places table constraint for new categories...');
+
+      try {
+        // Create a temporary table with the new schema
+        await db.execute('''
+          CREATE TABLE places_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name_som TEXT NOT NULL,
+            name_eng TEXT NOT NULL,
+            desc_som TEXT NOT NULL,
+            desc_eng TEXT NOT NULL,
+            location TEXT NOT NULL,
+            image_path TEXT,
+            category TEXT CHECK(category IN ('beach', 'historical', 'cultural', 'religious', 'suburb', 'urban park')) NOT NULL
+          )
+        ''');
+
+        // Copy data from old table to new table
+        await db.execute('''
+          INSERT INTO places_new 
+          SELECT * FROM places
+        ''');
+
+        // Drop old table and rename new table
+        await db.execute('DROP TABLE places');
+        await db.execute('ALTER TABLE places_new RENAME TO places');
+
+        print('✅ Places table updated successfully');
+      } catch (e) {
+        print('❌ Error during database upgrade: $e');
+        // If upgrade fails, try to recreate the table from scratch
+        try {
+          await db.execute('DROP TABLE IF EXISTS places');
+          await db.execute('''
+            CREATE TABLE places (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name_som TEXT NOT NULL,
+              name_eng TEXT NOT NULL,
+              desc_som TEXT NOT NULL,
+              desc_eng TEXT NOT NULL,
+              location TEXT NOT NULL,
+              image_path TEXT,
+              category TEXT CHECK(category IN ('beach', 'historical', 'cultural', 'religious', 'suburb', 'urban park')) NOT NULL
+            )
+          ''');
+          print('✅ Places table recreated successfully');
+        } catch (e2) {
+          print('❌ Error recreating places table: $e2');
+        }
+      }
+    }
   }
 
   // User operations
@@ -138,10 +205,16 @@ class DatabaseHelper {
   // Places operations
   Future<int> insertPlace(Map<String, dynamic> place) async {
     print('🏖️ Inserting new place: ${place['name_eng']}');
-    Database db = await database;
-    final id = await db.insert('places', place);
-    print('✅ Place inserted with ID: $id');
-    return id;
+    try {
+      Database db = await database;
+      final id = await db.insert('places', place);
+      print('✅ Place inserted with ID: $id');
+      return id;
+    } catch (e) {
+      print('❌ Error inserting place ${place['name_eng']}: $e');
+      print('📍 Place data: $place');
+      rethrow;
+    }
   }
 
   Future<List<Map<String, dynamic>>> getAllPlaces() async {
@@ -149,7 +222,27 @@ class DatabaseHelper {
     Database db = await database;
     final places = await db.query('places');
     print('✅ Found ${places.length} places');
+    if (places.isNotEmpty) {
+      print(
+          '📍 Sample place: ${places.first['name_eng']} (${places.first['category']})');
+    } else {
+      print('⚠️ No places found in database');
+    }
     return places;
+  }
+
+  Future<int> getPlacesCount() async {
+    print('🔍 Counting places in database');
+    try {
+      Database db = await database;
+      final result = await db.rawQuery('SELECT COUNT(*) as count FROM places');
+      final count = Sqflite.firstIntValue(result) ?? 0;
+      print('📊 Database has $count places');
+      return count;
+    } catch (e) {
+      print('❌ Error counting places: $e');
+      return 0;
+    }
   }
 
   Future<List<Map<String, dynamic>>> getPlacesByCategory(
@@ -264,14 +357,6 @@ class DatabaseHelper {
     List<Map<String, dynamic>> result =
         await db.rawQuery('SELECT COUNT(*) as count FROM places');
     return result.first['count'] == 0;
-  }
-
-  // Get count of places in database
-  Future<int> getPlacesCount() async {
-    Database db = await database;
-    List<Map<String, dynamic>> result =
-        await db.rawQuery('SELECT COUNT(*) as count FROM places');
-    return result.first['count'];
   }
 
   // Chat Messages operations

@@ -30,11 +30,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final languageProvider = Provider.of<LanguageProvider>(context);
 
+    print('🏠 Building DashboardScreen');
+    print('🏠 Current tab index: $_currentIndex');
+    print('🏠 Selected tab: ${_tabs[_currentIndex].runtimeType}');
+
     return Scaffold(
       body: _tabs[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
+          print('🏠 Tab changed to index: $index');
           setState(() {
             _currentIndex = index;
           });

@@ -7,6 +7,7 @@ import 'package:tourism_app/utils/app_colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:tourism_app/screens/place_details_screen.dart';
 import 'package:tourism_app/providers/user_behavior_provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class PlaceCard extends StatefulWidget {
   final Map<String, dynamic> place;
@@ -96,16 +97,145 @@ class _PlaceCardState extends State<PlaceCard> {
     }
   }
 
+  Widget _buildImage(String imagePath) {
+    // Check if it's a data URL (base64 image from MongoDB)
+    if (imagePath.startsWith('data:')) {
+      return Image.network(
+        imagePath,
+        width: double.infinity,
+        height: 120,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: Colors.grey[200],
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+                color: AppColors.primary,
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          print('❌ Data URL image error: $error');
+          return Container(
+            color: Colors.grey[200],
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.image_not_supported,
+                  color: Colors.grey[400],
+                  size: 30,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Image not available',
+                  style: GoogleFonts.poppins(
+                    color: Colors.grey[500],
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    // Handle regular HTTP URLs
+    if (imagePath.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: imagePath,
+        width: double.infinity,
+        height: 120,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => Container(
+          color: Colors.grey[200],
+          child: Center(
+            child: CircularProgressIndicator(
+              color: AppColors.primary,
+            ),
+          ),
+        ),
+        errorWidget: (context, url, error) {
+          print('❌ Network image error: $error');
+          return Container(
+            color: Colors.grey[200],
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.image_not_supported,
+                  color: Colors.grey[400],
+                  size: 30,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Image not available',
+                  style: GoogleFonts.poppins(
+                    color: Colors.grey[500],
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } else {
+      // Handle local asset images
+      return Image.asset(
+        'assets/places/$imagePath',
+        width: double.infinity,
+        height: 120,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          color: Colors.grey[200],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.image_not_supported,
+                color: Colors.grey[400],
+                size: 30,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Image not found',
+                style: GoogleFonts.poppins(
+                  color: Colors.grey[500],
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final languageProvider = Provider.of<LanguageProvider>(context);
-    final isEnglish = languageProvider.currentLanguage == 'en';
-    final name =
-        isEnglish ? widget.place['name_eng'] : widget.place['name_som'];
-    final description =
-        isEnglish ? widget.place['desc_eng'] : widget.place['desc_som'];
-    final category = widget.place['category'];
-    final imagePath = widget.place['image_path'];
+    final category = widget.place['category'] ?? 'unknown';
+
+    // Use image_url if available, otherwise fall back to image_path
+    final imagePath = widget.place['image_url'] ?? widget.place['image_path'];
+
+    final name = languageProvider.currentLanguage == 'som'
+        ? widget.place['name_som'] ?? widget.place['name_eng'] ?? 'Unknown'
+        : widget.place['name_eng'] ?? 'Unknown';
+
+    final description = languageProvider.currentLanguage == 'som'
+        ? widget.place['desc_som'] ??
+            widget.place['desc_eng'] ??
+            'No description'
+        : widget.place['desc_eng'] ?? 'No description';
 
     // Truncate description to 100 characters
     final truncatedDescription = description.length > 100
@@ -146,27 +276,7 @@ class _PlaceCardState extends State<PlaceCard> {
                     child: SizedBox(
                       height: 170,
                       width: double.infinity,
-                      child: imagePath.startsWith('http')
-                          ? CachedNetworkImage(
-                              imageUrl: imagePath,
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) => const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                              errorWidget: (context, url, error) => const Icon(
-                                Icons.error,
-                                color: Colors.red,
-                              ),
-                            )
-                          : Image.asset(
-                              'assets/places/$imagePath',
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  const Icon(
-                                Icons.error,
-                                color: Colors.red,
-                              ),
-                            ),
+                      child: _buildImage(imagePath),
                     ),
                   ),
                   Positioned(
@@ -328,26 +438,7 @@ class _PlaceCardState extends State<PlaceCard> {
             SizedBox(
               height: 140,
               width: double.infinity,
-              child: imagePath.startsWith('http')
-                  ? CachedNetworkImage(
-                      imageUrl: imagePath,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => const Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                      errorWidget: (context, url, error) => const Icon(
-                        Icons.error,
-                        color: Colors.red,
-                      ),
-                    )
-                  : Image.asset(
-                      'assets/places/$imagePath',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.error,
-                        color: Colors.red,
-                      ),
-                    ),
+              child: _buildImage(imagePath),
             ),
 
             // Content

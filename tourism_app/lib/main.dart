@@ -8,24 +8,21 @@ import 'package:tourism_app/screens/auth/register_screen.dart';
 import 'package:tourism_app/screens/dashboard/dashboard_screen.dart';
 import 'package:tourism_app/screens/splash_screen.dart';
 import 'package:tourism_app/utils/app_colors.dart';
-import 'package:tourism_app/utils/database_seeder.dart';
 import 'package:tourism_app/providers/user_behavior_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize database and seed data
-  await DatabaseSeeder.seedDatabase();
-
+  print('🚀 Starting app...');
   runApp(const MyApp());
 }
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    print('🎨 Building MyApp');
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => LanguageProvider()),

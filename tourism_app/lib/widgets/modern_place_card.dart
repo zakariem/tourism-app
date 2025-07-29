@@ -122,13 +122,26 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
   @override
   Widget build(BuildContext context) {
     final languageProvider = Provider.of<LanguageProvider>(context);
-    final isEnglish = languageProvider.currentLanguage == 'en';
-    final name =
-        isEnglish ? widget.place['name_eng'] : widget.place['name_som'];
-    final description =
-        isEnglish ? widget.place['desc_eng'] : widget.place['desc_som'];
-    final category = widget.place['category'];
-    final imagePath = widget.place['image_path'];
+    final category = widget.place['category'] ?? 'unknown';
+
+    // Use image_url if available, otherwise fall back to image_path
+    final imagePath = widget.place['image_url'] ?? widget.place['image_path'];
+
+    // Debug logging
+    print('🖼️ ModernPlaceCard - ${widget.place['name_eng']}:');
+    print('   image_path: ${widget.place['image_path']}');
+    print('   image_url: ${widget.place['image_url']}');
+    print('   final imagePath: $imagePath');
+
+    final name = languageProvider.currentLanguage == 'som'
+        ? widget.place['name_som'] ?? widget.place['name_eng'] ?? 'Unknown'
+        : widget.place['name_eng'] ?? 'Unknown';
+
+    final description = languageProvider.currentLanguage == 'som'
+        ? widget.place['desc_som'] ??
+            widget.place['desc_eng'] ??
+            'No description'
+        : widget.place['desc_eng'] ?? 'No description';
     final location = widget.place['location'] ?? 'Unknown Location';
 
     return ScaleTransition(
@@ -363,6 +376,56 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
   }
 
   Widget _buildImage(String imagePath) {
+    // Check if it's a data URL (base64 image from MongoDB)
+    if (imagePath.startsWith('data:')) {
+      return Image.network(
+        imagePath,
+        width: double.infinity,
+        height: 180,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: Colors.grey[200],
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+                color: AppColors.primary,
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          print('❌ Data URL image error: $error');
+          return Container(
+            color: Colors.grey[200],
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.image_not_supported,
+                  color: Colors.grey[400],
+                  size: 40,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Image not available',
+                  style: GoogleFonts.poppins(
+                    color: Colors.grey[500],
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    // Handle regular HTTP URLs
     if (imagePath.startsWith('http')) {
       return CachedNetworkImage(
         imageUrl: imagePath,
@@ -377,29 +440,33 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
             ),
           ),
         ),
-        errorWidget: (context, url, error) => Container(
-          color: Colors.grey[200],
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.image_not_supported,
-                color: Colors.grey[400],
-                size: 40,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Image not available',
-                style: GoogleFonts.poppins(
-                  color: Colors.grey[500],
-                  fontSize: 12,
+        errorWidget: (context, url, error) {
+          print('❌ Network image error: $error');
+          return Container(
+            color: Colors.grey[200],
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.image_not_supported,
+                  color: Colors.grey[400],
+                  size: 40,
                 ),
-              ),
-            ],
-          ),
-        ),
+                const SizedBox(height: 8),
+                Text(
+                  'Image not available',
+                  style: GoogleFonts.poppins(
+                    color: Colors.grey[500],
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       );
     } else {
+      // Handle local asset images
       return Image.asset(
         'assets/places/$imagePath',
         width: double.infinity,
@@ -440,6 +507,10 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
         return Colors.purple;
       case 'religious':
         return Colors.green;
+      case 'suburb':
+        return Colors.orange;
+      case 'urban park':
+        return Colors.teal;
       default:
         return AppColors.primary;
     }
