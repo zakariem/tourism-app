@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
@@ -22,6 +23,7 @@ class HomeTab extends StatefulWidget {
 class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  Timer? _searchDebounceTimer;
 
   List<Map<String, dynamic>> _places = [];
   List<Map<String, dynamic>> _filteredPlaces = [];
@@ -79,6 +81,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _searchDebounceTimer?.cancel();
     _heroAnimationController.dispose();
     super.dispose();
   }
@@ -100,7 +103,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       });
 
       // Apply current filters after loading
-      _onSearchChanged(_searchController.text);
+      _performSearch(_searchController.text);
     } catch (e) {
       print('❌ Error loading places: $e');
       if (mounted) {
@@ -159,13 +162,24 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   }
 
   void _onSearchChanged(String query) {
+    // Cancel previous timer
+    _searchDebounceTimer?.cancel();
+    
+    // Start new timer for debounced search
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      _performSearch(query);
+    });
+  }
+
+  void _performSearch(String query) {
     setState(() {
       // First filter by category
       List<Map<String, dynamic>> categoryFiltered = _places;
       if (_selectedCategory != 'all') {
         categoryFiltered = _places.where((place) {
-          final category = place['category']?.toString().toLowerCase() ?? '';
-          return category == _selectedCategory.toLowerCase();
+          final category = place['category']?.toString().toLowerCase().trim() ?? '';
+          final selectedCat = _selectedCategory.toLowerCase().trim();
+          return category == selectedCat;
         }).toList();
       }
 
@@ -180,14 +194,31 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           final descEng = place['desc_eng']?.toString().toLowerCase() ?? '';
           final descSom = place['desc_som']?.toString().toLowerCase() ?? '';
           final location = place['location']?.toString().toLowerCase() ?? '';
+          final category = place['category']?.toString().toLowerCase() ?? '';
 
           return nameEng.contains(searchQuery) ||
               nameSom.contains(searchQuery) ||
               descEng.contains(searchQuery) ||
               descSom.contains(searchQuery) ||
-              location.contains(searchQuery);
+              location.contains(searchQuery) ||
+              category.contains(searchQuery);
         }).toList();
       }
+    });
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _searchDebounceTimer?.cancel();
+    _performSearch('');
+  }
+
+  void _resetAllFilters() {
+    setState(() {
+      _selectedCategory = 'all';
+      _searchController.clear();
+      _searchDebounceTimer?.cancel();
+      _filteredPlaces = _places;
     });
   }
 
@@ -240,6 +271,12 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
             _buildTrendingSection(
               Provider.of<LanguageProvider>(context, listen: false),
             ),
+
+            // Search Results Counter
+            if (_searchController.text.isNotEmpty || _selectedCategory != 'all')
+              _buildSearchResultsCounter(
+                Provider.of<LanguageProvider>(context, listen: false),
+              ),
 
             // All Places Section
             _buildAllPlacesSection(
@@ -361,19 +398,36 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () async {
-                              await _loadPlaces();
-                            },
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Reload Places'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            _resetAllFilters();
+                          },
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Reset Filters'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: _isLoading
+                              ? null
+                              : () async {
+                                  await _loadPlaces();
+                                },
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Reload Places'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -661,8 +715,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                     ? IconButton(
                         icon: Icon(Icons.clear, color: Colors.grey[500]),
                         onPressed: () {
-                          _searchController.clear();
-                          _onSearchChanged('');
+                          _clearSearch();
                         },
                       )
                     : const SizedBox.shrink();
@@ -741,7 +794,11 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
         onSelected: (selected) {
           setState(() {
             _selectedCategory = selected ? category : 'all';
-            _onSearchChanged(_searchController.text);
+            // Clear search when changing category for better UX
+            if (!selected) {
+              _searchController.clear();
+            }
+            _performSearch(_searchController.text);
           });
         },
         backgroundColor: Colors.white,
@@ -756,6 +813,77 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
             : Colors.black.withOpacity(0.1),
         showCheckmark: false,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      ),
+    );
+  }
+
+  Widget _buildSearchResultsCounter(LanguageProvider languageProvider) {
+    final hasSearch = _searchController.text.isNotEmpty;
+    final hasCategory = _selectedCategory != 'all';
+    final resultCount = _filteredPlaces.length;
+    
+    String counterText;
+    if (hasSearch && hasCategory) {
+      counterText = 'Found $resultCount places for "${_searchController.text}" in ${languageProvider.getText(_selectedCategory)}';
+    } else if (hasSearch) {
+      counterText = 'Found $resultCount places for "${_searchController.text}"';
+    } else if (hasCategory) {
+      counterText = 'Found $resultCount places in ${languageProvider.getText(_selectedCategory)}';
+    } else {
+      counterText = 'Showing $resultCount places';
+    }
+
+    return SliverToBoxAdapter(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.primary.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.filter_list,
+              color: AppColors.primary,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                counterText,
+                style: GoogleFonts.poppins(
+                  color: AppColors.primary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            if (hasSearch || hasCategory)
+              GestureDetector(
+                onTap: _resetAllFilters,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Clear',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
