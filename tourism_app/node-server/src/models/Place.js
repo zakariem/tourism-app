@@ -13,7 +13,7 @@ const PlaceSchema = new mongoose.Schema({
     },
     image_path: { type: String, required: true },
     image_data: { type: String }, // Base64 encoded image data
-    pricePerPerson: { type: Number, min: 0, default: 0 },
+    pricePerPerson: { type: Number, min: 0, default: 5.0 }, // Default $5 per person
     maxCapacity: { type: Number, min: 1, default: 10 },
     availableDates: [{ type: Date }],
     createdAt: { type: Date, default: Date.now }

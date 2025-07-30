@@ -25,6 +25,7 @@ app.use('/api/auth', require('./src/routes/authRoutes'));
 app.use('/api/places', require('./src/routes/placeRoutes'));
 app.use('/api/bookings', require('./src/routes/bookingRoutes'));
 app.use('/api/favorites', require('./src/routes/favoritesRoutes'));
+app.use('/api/payments', require('./src/routes/paymentRoutes'));
 
 // Basic route for testing
 app.get('/', (req, res) => {

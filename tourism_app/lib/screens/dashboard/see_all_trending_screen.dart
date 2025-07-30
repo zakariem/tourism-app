@@ -130,9 +130,7 @@ class _SeeAllTrendingScreenState extends State<SeeAllTrendingScreen> {
           color: isSelected ? AppColors.primary : Colors.black87,
         ),
       ),
-      trailing: isSelected
-          ? Icon(Icons.check, color: AppColors.primary)
-          : null,
+      trailing: isSelected ? Icon(Icons.check, color: AppColors.primary) : null,
       onTap: () {
         setState(() {
           _sortBy = value;
@@ -242,7 +240,8 @@ class _SeeAllTrendingScreenState extends State<SeeAllTrendingScreen> {
                 const Spacer(),
                 if (_sortBy != 'popularity')
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -259,7 +258,7 @@ class _SeeAllTrendingScreenState extends State<SeeAllTrendingScreen> {
               ],
             ),
           ),
-          
+
           // Places list
           Expanded(
             child: _filteredPlaces.isEmpty

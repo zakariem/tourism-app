@@ -3,24 +3,33 @@ import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
 import 'package:tourism_app/screens/dashboard/tabs/home_tab.dart';
 import 'package:tourism_app/screens/dashboard/tabs/favorites_tab.dart';
+import 'package:tourism_app/screens/dashboard/tabs/payments_tab.dart';
 import 'package:tourism_app/screens/dashboard/tabs/support_tab.dart';
 import 'package:tourism_app/screens/dashboard/tabs/about_tab.dart';
 import 'package:tourism_app/screens/dashboard/tabs/profile_tab.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+  final int initialIndex;
+  const DashboardScreen({Key? key, this.initialIndex = 0}) : super(key: key);
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  int _currentIndex = 0;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
 
   final List<Widget> _tabs = [
     const HomeTab(),
     const FavoritesTab(),
+    const PaymentsTab(),
     const SupportTab(),
     const AboutTab(),
     const ProfileTab(),
@@ -58,6 +67,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: const Icon(Icons.favorite_outline),
             activeIcon: const Icon(Icons.favorite),
             label: languageProvider.getText('favorites'),
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.payment_outlined),
+            activeIcon: const Icon(Icons.payment),
+            label: 'Payments',
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.support_agent_outlined),

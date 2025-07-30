@@ -167,7 +167,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   void _onSearchChanged(String query) {
     // Cancel previous timer
     _searchDebounceTimer?.cancel();
-    
+
     // Start new timer for debounced search
     _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
       _performSearch(query);
@@ -180,7 +180,8 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       List<Map<String, dynamic>> categoryFiltered = _places;
       if (_selectedCategory != 'all') {
         categoryFiltered = _places.where((place) {
-          final category = place['category']?.toString().toLowerCase().trim() ?? '';
+          final category =
+              place['category']?.toString().toLowerCase().trim() ?? '';
           final selectedCat = _selectedCategory.toLowerCase().trim();
           return category == selectedCat;
         }).toList();
@@ -296,7 +297,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       child: Column(
         children: [
           _buildSectionHeader(
-            'Recommended for You', 
+            'Recommended for You',
             Icons.recommend,
             onSeeAllPressed: () {
               Navigator.push(
@@ -348,7 +349,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       child: Column(
         children: [
           _buildSectionHeader(
-            'Trending Now', 
+            'Trending Now',
             Icons.trending_up,
             onSeeAllPressed: () {
               Navigator.push(
@@ -395,7 +396,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           if (index == 0) {
             // Building section header
             return _buildSectionHeader(
-              'All Places', 
+              'All Places',
               Icons.explore,
               onSeeAllPressed: () {
                 Navigator.push(
@@ -466,7 +467,8 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Text('Reload Places'),
                         ),
@@ -864,14 +866,16 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     final hasSearch = _searchController.text.isNotEmpty;
     final hasCategory = _selectedCategory != 'all';
     final resultCount = _filteredPlaces.length;
-    
+
     String counterText;
     if (hasSearch && hasCategory) {
-      counterText = 'Found $resultCount places for "${_searchController.text}" in ${languageProvider.getText(_selectedCategory)}';
+      counterText =
+          'Found $resultCount places for "${_searchController.text}" in ${languageProvider.getText(_selectedCategory)}';
     } else if (hasSearch) {
       counterText = 'Found $resultCount places for "${_searchController.text}"';
     } else if (hasCategory) {
-      counterText = 'Found $resultCount places in ${languageProvider.getText(_selectedCategory)}';
+      counterText =
+          'Found $resultCount places in ${languageProvider.getText(_selectedCategory)}';
     } else {
       counterText = 'Showing $resultCount places';
     }
@@ -910,7 +914,8 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
               GestureDetector(
                 onTap: _resetAllFilters,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.primary,
                     borderRadius: BorderRadius.circular(8),
@@ -931,7 +936,8 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon, {VoidCallback? onSeeAllPressed}) {
+  Widget _buildSectionHeader(String title, IconData icon,
+      {VoidCallback? onSeeAllPressed}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(

@@ -372,6 +372,35 @@ class _PlaceCardState extends State<PlaceCard> {
                           ],
                         ),
                         const SizedBox(height: 10),
+                        // Pricing Information
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.attach_money,
+                              color: AppColors.primary,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '\$${(widget.place['pricePerPerson'] ?? 0).toStringAsFixed(2)} per person',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const Spacer(),
+                            if ((widget.place['maxCapacity'] ?? 0) > 0)
+                              Text(
+                                'Max ${widget.place['maxCapacity']} people',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
                         Text(
                           truncatedDescription,
                           style: TextStyle(
@@ -520,7 +549,37 @@ class _PlaceCardState extends State<PlaceCard> {
                       //   maxLines: 3,
                       //   overflow: TextOverflow.ellipsis,
                       // ),
-                      // const SizedBox(height: 8),
+                      const SizedBox(height: 8),
+
+                      // Pricing Information
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.attach_money,
+                            color: AppColors.primary,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '\$${(widget.place['pricePerPerson'] ?? 0).toStringAsFixed(2)} per person',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const Spacer(),
+                          if ((widget.place['maxCapacity'] ?? 0) > 0)
+                            Text(
+                              'Max ${widget.place['maxCapacity']} people',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
 
                       // Read More Button
                       Align(

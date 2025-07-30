@@ -65,7 +65,8 @@ class _SeeAllPlacesScreenState extends State<SeeAllPlacesScreen> {
       // Filter by category
       if (_selectedCategory != 'all') {
         filtered = filtered.where((place) {
-          final category = place['category']?.toString().toLowerCase().trim() ?? '';
+          final category =
+              place['category']?.toString().toLowerCase().trim() ?? '';
           return category == _selectedCategory.toLowerCase().trim();
         }).toList();
       }
@@ -169,9 +170,7 @@ class _SeeAllPlacesScreenState extends State<SeeAllPlacesScreen> {
           color: isSelected ? AppColors.primary : Colors.black87,
         ),
       ),
-      trailing: isSelected
-          ? Icon(Icons.check, color: AppColors.primary)
-          : null,
+      trailing: isSelected ? Icon(Icons.check, color: AppColors.primary) : null,
       onTap: () {
         setState(() {
           _sortBy = value;
@@ -311,7 +310,8 @@ class _SeeAllPlacesScreenState extends State<SeeAllPlacesScreen> {
                     checkmarkColor: AppColors.primary,
                     backgroundColor: Colors.grey[100],
                     side: BorderSide(
-                      color: isSelected ? AppColors.primary : Colors.transparent,
+                      color:
+                          isSelected ? AppColors.primary : Colors.transparent,
                     ),
                   ),
                 );
@@ -335,7 +335,8 @@ class _SeeAllPlacesScreenState extends State<SeeAllPlacesScreen> {
                   ),
                 ),
                 const Spacer(),
-                if (_selectedCategory != 'all' || _searchController.text.isNotEmpty)
+                if (_selectedCategory != 'all' ||
+                    _searchController.text.isNotEmpty)
                   TextButton.icon(
                     onPressed: _clearFilters,
                     icon: const Icon(Icons.clear, size: 16),
@@ -351,7 +352,8 @@ class _SeeAllPlacesScreenState extends State<SeeAllPlacesScreen> {
                 if (_sortBy != 'name')
                   Container(
                     margin: const EdgeInsets.only(left: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -368,7 +370,7 @@ class _SeeAllPlacesScreenState extends State<SeeAllPlacesScreen> {
               ],
             ),
           ),
-          
+
           // Places list
           Expanded(
             child: _filteredPlaces.isEmpty

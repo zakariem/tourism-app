@@ -388,7 +388,7 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Icon(Icons.star,
-                                            color: Colors.orange, 
+                                            color: Colors.orange,
                                             size: isSmallCard ? 14 : 16),
                                         SizedBox(width: isSmallCard ? 2 : 4),
                                         Text(
@@ -408,7 +408,7 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
                                   // Visit Button
                                   Container(
                                     padding: EdgeInsets.symmetric(
-                                        horizontal: isSmallCard ? 12 : 16, 
+                                        horizontal: isSmallCard ? 12 : 16,
                                         vertical: isSmallCard ? 6 : 8),
                                     decoration: BoxDecoration(
                                       color: AppColors.primary,
