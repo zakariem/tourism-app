@@ -113,7 +113,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
     List<String> extensions = ['.png', '.jpg', '.jpeg'];
     for (int i = 2; i <= 4; i++) {
       for (String ext in extensions) {
-        String variation = 'assets/places/${baseName}$i$ext';
+        String variation = 'assets/places/$baseName$i$ext';
         if (_imageExists(variation)) {
           images.add(variation);
           break; // Found one variation, move to next number
@@ -348,7 +348,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.image_not_supported,
                                   color: Colors.white,
                                   size: 60,
@@ -444,7 +444,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                   ],
                 ),
                 child: IconButton(
-                  icon: Icon(Icons.arrow_back, color: AppColors.primary),
+                  icon: const Icon(Icons.arrow_back, color: AppColors.primary),
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
@@ -661,11 +661,11 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Row(
+                        content: const Row(
                           children: [
-                            const Icon(Icons.directions, color: Colors.white),
-                            const SizedBox(width: 12),
-                            const Text('Opening directions...'),
+                            Icon(Icons.directions, color: Colors.white),
+                            SizedBox(width: 12),
+                            Text('Opening directions...'),
                           ],
                         ),
                         backgroundColor: Colors.blue,
@@ -722,7 +722,8 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.location_on, color: AppColors.primary, size: 20),
+                  const Icon(Icons.location_on,
+                      color: AppColors.primary, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -839,8 +840,8 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                   color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child:
-                    Icon(Icons.description, color: AppColors.primary, size: 20),
+                child: const Icon(Icons.description,
+                    color: AppColors.primary, size: 20),
               ),
               const SizedBox(width: 12),
               Text(
@@ -1262,9 +1263,9 @@ class _BookingDialogState extends State<BookingDialog> {
   DateTime? _selectedDate;
   String? _selectedTimeSlot;
   int _visitorCount = 1;
-  String _contactName = '';
-  String _contactPhone = '';
-  String _contactEmail = '';
+  final String _contactName = '';
+  final String _contactPhone = '';
+  final String _contactEmail = '';
   bool _isLoading = false;
 
   final List<String> _timeSlots = [
@@ -1297,7 +1298,7 @@ class _BookingDialogState extends State<BookingDialog> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
+            colorScheme: const ColorScheme.light(
               primary: AppColors.primary,
               onPrimary: Colors.white,
               surface: Colors.white,
@@ -1423,7 +1424,7 @@ class _BookingDialogState extends State<BookingDialog> {
                 color: Colors.green.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.check_circle,
                 color: Colors.green,
                 size: 60,
@@ -1560,11 +1561,11 @@ class _BookingDialogState extends State<BookingDialog> {
   void _showSuccessSnackBar() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
+        content: const Row(
           children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 12),
-            const Text('Booking confirmed successfully!'),
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 12),
+            Text('Booking confirmed successfully!'),
           ],
         ),
         backgroundColor: Colors.green,
@@ -1595,7 +1596,7 @@ class _BookingDialogState extends State<BookingDialog> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.calendar_today,
+                  const Icon(Icons.calendar_today,
                       color: AppColors.primary, size: 24),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1696,7 +1697,7 @@ class _BookingDialogState extends State<BookingDialog> {
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.calendar_today,
+                              const Icon(Icons.calendar_today,
                                   color: AppColors.primary),
                               const SizedBox(width: 12),
                               Text(

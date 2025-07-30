@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:tourism_app/widgets/language_toggle.dart';
-import 'dart:ui';
+import 'package:google_fonts/google_fonts.dart';
 
 class AboutTab extends StatefulWidget {
   const AboutTab({Key? key}) : super(key: key);
@@ -21,30 +21,25 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
-
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-
     _fadeAnimation = CurvedAnimation(
       parent: _fadeController,
-      curve: Curves.easeOut,
+      curve: Curves.easeInOut,
     );
-
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
+      begin: const Offset(0, 0.2),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _slideController,
-      curve: Curves.easeOutQuint,
+      curve: Curves.easeOutCubic,
     ));
-
     _fadeController.forward();
     _slideController.forward();
   }
@@ -59,11 +54,12 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final languageProvider = Provider.of<LanguageProvider>(context);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth > 600;
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width > 768;
+    final isMobile = size.width < 600;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFF8FAFC),
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: SlideTransition(
@@ -71,237 +67,138 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
-              // Modern App Bar
-              SliverAppBar(
-                expandedHeight: 200,
-                floating: false,
-                pinned: true,
-                elevation: 0,
-                backgroundColor: Colors.transparent,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppColors.primary,
-                          AppColors.primary.withOpacity(0.8),
-                        ],
-                      ),
-                    ),
-                    child: Stack(
-                      children: [
-                        // Pattern overlay
-                        Positioned.fill(
-                          child: Opacity(
-                            opacity: 0.1,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Colors.green.withOpacity(0.1),
-                                    Colors.teal.withOpacity(0.1),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Content
-                        Positioned(
-                          bottom: 40,
-                          left: 0,
-                          right: 0,
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 10),
-                                    ),
-                                  ],
-                                ),
-                                child: Icon(
-                                  Icons.travel_explore,
-                                  size: 40,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                languageProvider.getText('about'),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Curved bottom
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: Container(
-                            height: 30,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[50],
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(30),
-                                topRight: Radius.circular(30),
-                              ),
-                            ),
-                          ),
-                        ),
+              _buildModernAppBar(languageProvider, isTablet),
+              SliverPadding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 16 : (isTablet ? 40 : 24),
+                  vertical: 20,
+                ),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    _buildHeroSection(languageProvider, isTablet, isMobile),
+                    const SizedBox(height: 32),
+                    _buildAboutSection(languageProvider, isTablet, isMobile),
+                    const SizedBox(height: 32),
+                    _buildFeaturesGrid(languageProvider, isTablet, isMobile),
+                    const SizedBox(height: 32),
+                    _buildStatsSection(languageProvider, isTablet, isMobile),
+                    const SizedBox(height: 32),
+                    _buildTeamSection(languageProvider, isTablet, isMobile),
+                    const SizedBox(height: 32),
+                    _buildContactSection(languageProvider, isTablet, isMobile),
+                    const SizedBox(height: 60),
+                  ]),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernAppBar(LanguageProvider languageProvider, bool isTablet) {
+    return SliverAppBar(
+      expandedHeight: isTablet ? 280 : 220,
+      floating: false,
+      pinned: true,
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      automaticallyImplyLeading: false,
+      flexibleSpace: FlexibleSpaceBar(
+        background: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.primary,
+                AppColors.primary.withOpacity(0.8),
+                const Color(0xFF1E40AF),
+              ],
+            ),
+          ),
+          child: Stack(
+            children: [
+              // Animated background pattern
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment.topRight,
+                      radius: 1.5,
+                      colors: [
+                        Colors.white.withOpacity(0.1),
+                        Colors.transparent,
                       ],
                     ),
                   ),
                 ),
-                automaticallyImplyLeading: false,
-                actions: [
-                  Container(
-                    margin: const EdgeInsets.only(right: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const LanguageToggle(showLabel: false),
-                  ),
-                ],
               ),
-
               // Content
-              SliverToBoxAdapter(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final maxWidth = isTablet ? 800.0 : double.infinity;
-                    final horizontalPadding = isTablet ? 40.0 : 20.0;
-
-                    return Center(
-                      child: Container(
-                        constraints: BoxConstraints(maxWidth: maxWidth),
-                        padding: EdgeInsets.fromLTRB(
-                            horizontalPadding, 0, horizontalPadding, 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // App Info Card
-                            _buildAppInfoCard(languageProvider, isTablet),
-
-                            SizedBox(height: isTablet ? 32 : 24),
-
-                            // About App Section
-                            _buildAboutSection(languageProvider, isTablet),
-
-                            SizedBox(height: isTablet ? 32 : 24),
-
-                            // Features Section
-                            _buildFeaturesSection(languageProvider, isTablet),
-
-                            SizedBox(height: isTablet ? 32 : 24),
-
-                            // Developer Team Section
-                            _buildDeveloperSection(languageProvider, isTablet),
-
-                            SizedBox(height: isTablet ? 60 : 40),
-                          ],
-                        ),
+              Positioned(
+                bottom: 60,
+                left: 0,
+                right: 0,
+                child: Column(
+                  children: [
+                    Container(
+                      width: isTablet ? 100 : 80,
+                      height: isTablet ? 100 : 80,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 30,
+                            offset: const Offset(0, 15),
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAppInfoCard(LanguageProvider languageProvider, bool isTablet) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
-      color: Colors.white,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(isTablet ? 40 : 32),
-          child: Column(
-            children: [
-              Container(
-                width: isTablet ? 120 : 100,
-                height: isTablet ? 120 : 100,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primary,
-                      AppColors.primary.withOpacity(0.7),
-                    ],
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withOpacity(0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
+                      child: Icon(
+                        Icons.travel_explore_rounded,
+                        size: isTablet ? 50 : 40,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      languageProvider.getText('about'),
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: isTablet ? 32 : 28,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      languageProvider.currentLanguage == 'en'
+                          ? 'Discover Somalia with us'
+                          : 'Soomaaliya nala baadh',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: isTablet ? 18 : 16,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                   ],
                 ),
-                child: Icon(
-                  Icons.travel_explore,
-                  size: isTablet ? 60 : 50,
-                  color: Colors.white,
-                ),
               ),
-              const SizedBox(height: 24),
-              Text(
-                languageProvider.getText('app_name'),
-                style: TextStyle(
-                  fontSize: isTablet ? 32 : 28,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'v1.0.0',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+              // Curved bottom
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(40),
+                      topRight: Radius.circular(40),
+                    ),
                   ),
                 ),
               ),
@@ -309,228 +206,697 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
           ),
         ),
       ),
+      actions: [
+        Container(
+          margin: const EdgeInsets.only(right: 16, top: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: const LanguageToggle(showLabel: false),
+        ),
+      ],
     );
   }
 
-  Widget _buildAboutSection(LanguageProvider languageProvider, bool isTablet) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
+  Widget _buildHeroSection(LanguageProvider languageProvider, bool isTablet, bool isMobile) {
+    return Container(
+      padding: EdgeInsets.all(isTablet ? 40 : 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
+          ),
+        ],
       ),
-      color: Colors.white,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(isTablet ? 32 : 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: isTablet ? 60 : 50,
-                    height: isTablet ? 60 : 50,
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(
-                      Icons.info_outline,
-                      color: Colors.blue.shade400,
-                      size: isTablet ? 28 : 24,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    languageProvider.getText('about_app'),
-                    style: TextStyle(
-                      fontSize: isTablet ? 24 : 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+      child: Column(
+        children: [
+          Container(
+            width: isTablet ? 140 : 120,
+            height: isTablet ? 140 : 120,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.primary,
+                  AppColors.primary.withOpacity(0.7),
                 ],
               ),
-              const SizedBox(height: 20),
-              Text(
-                languageProvider.currentLanguage == 'en'
-                    ? 'Welcome to our Tourism App! This application is designed to help visitors explore the beautiful tourist destinations in Somalia. Discover historical sites, cultural landmarks, religious places, and stunning beaches across the country.'
-                    : 'Ku soo dhaweeyay App-ka Dalxiiska! Barnaamijkan wuxuu loo sameeyay si uu uga caawiyo martida inay wax ka baran meelaha dalxiiska ee Soomaaliya. Waxaad aragtaa meelaha taariikhiga ah, meelaha dhaqanka, meelaha diiniga ah, iyo xeebaha quruxsan ee dalka.',
-                style: TextStyle(
-                  color: Colors.grey[700],
-                  fontSize: isTablet ? 18 : 16,
-                  height: 1.6,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.3),
+                  blurRadius: 25,
+                  offset: const Offset(0, 12),
                 ),
-              ),
-            ],
+              ],
+            ),
+            child: Icon(
+              Icons.travel_explore_rounded,
+              size: isTablet ? 70 : 60,
+              color: Colors.white,
+            ),
           ),
-        ),
+          const SizedBox(height: 24),
+          Text(
+            languageProvider.getText('app_name'),
+            style: GoogleFonts.poppins(
+              fontSize: isTablet ? 36 : 32,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF1F2937),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary.withOpacity(0.1),
+                  AppColors.primary.withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(25),
+              border: Border.all(
+                color: AppColors.primary.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              'Version 1.0.0',
+              style: GoogleFonts.poppins(
+                color: AppColors.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildFeaturesSection(
-      LanguageProvider languageProvider, bool isTablet) {
+  Widget _buildAboutSection(LanguageProvider languageProvider, bool isTablet, bool isMobile) {
+    return Container(
+      padding: EdgeInsets.all(isTablet ? 32 : 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: isTablet ? 64 : 56,
+                height: isTablet ? 64 : 56,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.blue.shade400,
+                      Colors.blue.shade600,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(
+                  Icons.info_outline_rounded,
+                  color: Colors.white,
+                  size: isTablet ? 32 : 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  languageProvider.getText('about_app'),
+                  style: GoogleFonts.poppins(
+                    fontSize: isTablet ? 28 : 24,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1F2937),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Text(
+            languageProvider.currentLanguage == 'en'
+                ? 'Welcome to our comprehensive Tourism App designed specifically for exploring the rich cultural heritage and breathtaking landscapes of Somalia. Our platform connects travelers with authentic experiences, from ancient historical sites to pristine beaches, vibrant markets, and sacred religious landmarks.'
+                : 'Ku soo dhaweeyaw barnaamijkeenna dalxiiska ee dhamaystiran oo gaar ahaan loo sameeyay si loo baadho dhaxalka dhaqanka qani ah iyo muuqaalada soo jiidashada leh ee Soomaaliya. Goobteennu waxay ku xiraysaa dalxiisayaasha khibradaha dhabta ah, laga bilaabo goobaha taariikhiga ah ee qadiimiga ah ilaa xeebaha nadiifka ah, suuqyada firfircoon, iyo calaamadaha diinta ee quduuska ah.',
+            style: GoogleFonts.poppins(
+              color: const Color(0xFF6B7280),
+              fontSize: isTablet ? 18 : 16,
+              height: 1.7,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeaturesGrid(LanguageProvider languageProvider, bool isTablet, bool isMobile) {
     final features = [
       {
-        'icon': Icons.location_on,
-        'title': languageProvider.currentLanguage == 'en'
-            ? 'Discover Places'
-            : 'Baadh Meelaha',
+        'icon': Icons.location_on_rounded,
+        'title': languageProvider.currentLanguage == 'en' ? 'Discover Places' : 'Baadh Meelaha',
         'description': languageProvider.currentLanguage == 'en'
-            ? 'Explore amazing tourist destinations'
-            : 'Baadh meelaha dalxiiska ee cajiibka ah',
-        'color': Colors.red.shade400,
+            ? 'Explore amazing tourist destinations across Somalia'
+            : 'Baadh meelaha dalxiiska ee cajiibka ah ee Soomaaliya',
+        'color': const Color(0xFFEF4444),
       },
       {
-        'icon': Icons.favorite,
-        'title': languageProvider.currentLanguage == 'en'
-            ? 'Save Favorites'
-            : 'Kaydi Kuwa Aad Jeceshahay',
+        'icon': Icons.favorite_rounded,
+        'title': languageProvider.currentLanguage == 'en' ? 'Save Favorites' : 'Kaydi Kuwa Aad Jeceshahay',
         'description': languageProvider.currentLanguage == 'en'
-            ? 'Keep track of your favorite places'
-            : 'La soco meelaha aad jeceshahay',
-        'color': Colors.pink.shade400,
+            ? 'Keep track of your favorite places and create wishlists'
+            : 'La soco meelaha aad jeceshahay oo samee liisaska rabitaankaaga',
+        'color': const Color(0xFFEC4899),
       },
       {
-        'icon': Icons.chat,
-        'title': languageProvider.currentLanguage == 'en'
-            ? 'AI Assistant'
-            : 'Caawimaadka AI',
+        'icon': Icons.smart_toy_rounded,
+        'title': languageProvider.currentLanguage == 'en' ? 'AI Assistant' : 'Caawimaadka AI',
         'description': languageProvider.currentLanguage == 'en'
-            ? 'Get help from our smart assistant'
-            : 'Ka hel caawimaad caawimaadkeena caqliga ah',
-        'color': Colors.purple.shade400,
+            ? 'Get personalized recommendations from our smart AI'
+            : 'Ka hel talooyinka gaarka ah caawimaadkeenna caqliga ah',
+        'color': const Color(0xFF8B5CF6),
       },
       {
-        'icon': Icons.language,
-        'title': languageProvider.currentLanguage == 'en'
-            ? 'Multi-language'
-            : 'Luuqado Badan',
+        'icon': Icons.language_rounded,
+        'title': languageProvider.currentLanguage == 'en' ? 'Multi-language' : 'Luuqado Badan',
         'description': languageProvider.currentLanguage == 'en'
-            ? 'Available in English and Somali'
-            : 'Waxaa lagu heli karaa Ingiriisi iyo Soomaali',
-        'color': Colors.green.shade400,
+            ? 'Available in English and Somali languages'
+            : 'Waxaa lagu heli karaa luuqadaha Ingiriisiga iyo Soomaaliga',
+        'color': const Color(0xFF10B981),
       },
     ];
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
+    return Container(
+      padding: EdgeInsets.all(isTablet ? 32 : 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
+          ),
+        ],
       ),
-      color: Colors.white,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(isTablet ? 32 : 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: isTablet ? 60 : 50,
-                    height: isTablet ? 60 : 50,
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(
-                      Icons.star_outline,
-                      color: Colors.orange.shade400,
-                      size: isTablet ? 28 : 24,
-                    ),
+              Container(
+                width: isTablet ? 64 : 56,
+                height: isTablet ? 64 : 56,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.orange.shade400,
+                      Colors.orange.shade600,
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Text(
-                    languageProvider.currentLanguage == 'en'
-                        ? 'Features'
-                        : 'Sifooyinka',
-                    style: TextStyle(
-                      fontSize: isTablet ? 24 : 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(
+                  Icons.star_rounded,
+                  color: Colors.white,
+                  size: isTablet ? 32 : 28,
+                ),
               ),
-              const SizedBox(height: 20),
-              ...features
-                  .map((feature) => _buildFeatureItem(
-                        icon: feature['icon'] as IconData,
-                        title: feature['title'] as String,
-                        description: feature['description'] as String,
-                        color: feature['color'] as Color,
-                        isTablet: isTablet,
-                      ))
-                  .toList(),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  languageProvider.currentLanguage == 'en' ? 'Key Features' : 'Sifooyinka Muhiimka ah',
+                  style: GoogleFonts.poppins(
+                    fontSize: isTablet ? 28 : 24,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1F2937),
+                  ),
+                ),
+              ),
             ],
           ),
-        ),
+          const SizedBox(height: 24),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: isMobile ? 1 : (isTablet ? 2 : 2),
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: isMobile ? 3.5 : (isTablet ? 3.2 : 3.0),
+            ),
+            itemCount: features.length,
+            itemBuilder: (context, index) {
+              final feature = features[index];
+              return _buildFeatureCard(
+                icon: feature['icon'] as IconData,
+                title: feature['title'] as String,
+                description: feature['description'] as String,
+                color: feature['color'] as Color,
+                isTablet: isTablet,
+                isMobile: isMobile,
+              );
+            },
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildFeatureItem({
+  Widget _buildFeatureCard({
     required IconData icon,
     required String title,
     required String description,
     required Color color,
     required bool isTablet,
+    required bool isMobile,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+    return Container(
+      padding: EdgeInsets.all(isTablet ? 20 : 16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
       child: Row(
         children: [
           Container(
-            width: isTablet ? 48 : 40,
-            height: isTablet ? 48 : 40,
+            width: isTablet ? 56 : 48,
+            height: isTablet ? 56 : 48,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              color: color,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
             child: Icon(
               icon,
-              color: color,
-              size: isTablet ? 24 : 20,
+              color: Colors.white,
+              size: isTablet ? 28 : 24,
             ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   title,
-                  style: TextStyle(
+                  style: GoogleFonts.poppins(
                     fontSize: isTablet ? 18 : 16,
                     fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1F2937),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: TextStyle(
+                  style: GoogleFonts.poppins(
+                    fontSize: isTablet ? 14 : 13,
+                    color: const Color(0xFF6B7280),
+                    height: 1.4,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsSection(LanguageProvider languageProvider, bool isTablet, bool isMobile) {
+    final stats = [
+      {
+        'number': '50+',
+        'label': languageProvider.currentLanguage == 'en' ? 'Tourist Places' : 'Meelaha Dalxiiska',
+        'icon': Icons.place_rounded,
+        'color': const Color(0xFF3B82F6),
+      },
+      {
+        'number': '4',
+        'label': languageProvider.currentLanguage == 'en' ? 'Categories' : 'Qaybaha',
+        'icon': Icons.category_rounded,
+        'color': const Color(0xFF10B981),
+      },
+      {
+        'number': '2',
+        'label': languageProvider.currentLanguage == 'en' ? 'Languages' : 'Luuqadaha',
+        'icon': Icons.language_rounded,
+        'color': const Color(0xFFEF4444),
+      },
+      {
+        'number': '24/7',
+        'label': languageProvider.currentLanguage == 'en' ? 'Support' : 'Taageero',
+        'icon': Icons.support_agent_rounded,
+        'color': const Color(0xFF8B5CF6),
+      },
+    ];
+
+    return Container(
+      padding: EdgeInsets.all(isTablet ? 32 : 24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary.withOpacity(0.05),
+            AppColors.primary.withOpacity(0.02),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: AppColors.primary.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            languageProvider.currentLanguage == 'en' ? 'App Statistics' : 'Tirakoobka App-ka',
+            style: GoogleFonts.poppins(
+              fontSize: isTablet ? 28 : 24,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF1F2937),
+            ),
+          ),
+          const SizedBox(height: 24),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: isMobile ? 2 : 4,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: isMobile ? 1.2 : 1.0,
+            ),
+            itemCount: stats.length,
+            itemBuilder: (context, index) {
+              final stat = stats[index];
+              return Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: (stat['color'] as Color).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        stat['icon'] as IconData,
+                        color: stat['color'] as Color,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      stat['number'] as String,
+                      style: GoogleFonts.poppins(
+                        fontSize: isTablet ? 28 : 24,
+                        fontWeight: FontWeight.bold,
+                        color: stat['color'] as Color,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      stat['label'] as String,
+                      style: GoogleFonts.poppins(
+                        fontSize: isTablet ? 14 : 12,
+                        color: const Color(0xFF6B7280),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeamSection(LanguageProvider languageProvider, bool isTablet, bool isMobile) {
+    final teamMembers = [
+      {
+        'name': 'Hassan Mohamed Zubeyr',
+        'role': 'Lead Developer',
+        'email': 'hassan@gmail.com',
+        'color': const Color(0xFF3B82F6),
+        'icon': Icons.code_rounded,
+      },
+      {
+        'name': 'Mohamed Abdikhadir Gelle',
+        'role': 'ML Engineer',
+        'email': 'mohamed@gmail.com',
+        'color': const Color(0xFF10B981),
+        'icon': Icons.psychology_rounded,
+      },
+      {
+        'name': 'Mohamed Abdullahi Ali',
+        'role': 'UI/UX Designer',
+        'email': 'abdullahi@gmail.com',
+        'color': const Color(0xFF8B5CF6),
+        'icon': Icons.design_services_rounded,
+      },
+      {
+        'name': 'Libaan Abdi Ibraahim',
+        'role': 'Content Writer',
+        'email': 'libaan@gmail.com',
+        'color': const Color(0xFFEF4444),
+        'icon': Icons.edit_rounded,
+      },
+    ];
+
+    return Container(
+      padding: EdgeInsets.all(isTablet ? 32 : 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: isTablet ? 64 : 56,
+                height: isTablet ? 64 : 56,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.indigo.shade400,
+                      Colors.indigo.shade600,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(
+                  Icons.group_rounded,
+                  color: Colors.white,
+                  size: isTablet ? 32 : 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  languageProvider.getText('developer_team'),
+                  style: GoogleFonts.poppins(
+                    fontSize: isTablet ? 28 : 24,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1F2937),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: isMobile ? 1 : (isTablet ? 2 : 2),
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: isMobile ? 4.0 : (isTablet ? 3.5 : 3.2),
+            ),
+            itemCount: teamMembers.length,
+            itemBuilder: (context, index) {
+              final member = teamMembers[index];
+              return _buildTeamMemberCard(
+                name: member['name'] as String,
+                role: member['role'] as String,
+                email: member['email'] as String,
+                color: member['color'] as Color,
+                icon: member['icon'] as IconData,
+                isTablet: isTablet,
+                isMobile: isMobile,
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeamMemberCard({
+    required String name,
+    required String role,
+    required String email,
+    required Color color,
+    required IconData icon,
+    required bool isTablet,
+    required bool isMobile,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(isTablet ? 20 : 16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Stack(
+            children: [
+              Container(
+                width: isTablet ? 72 : 64,
+                height: isTablet ? 72 : 64,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [color, color.withOpacity(0.8)],
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withOpacity(0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    name.split(' ').map((n) => n[0]).take(2).join(),
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: isTablet ? 22 : 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: color.withOpacity(0.3),
+                      width: 2,
+                    ),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 14,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  name,
+                  style: GoogleFonts.poppins(
+                    fontSize: isTablet ? 18 : 16,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1F2937),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  role,
+                  style: GoogleFonts.poppins(
+                    color: color,
                     fontSize: isTablet ? 16 : 14,
-                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  email,
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFF6B7280),
+                    fontSize: isTablet ? 14 : 13,
                   ),
                 ),
               ],
@@ -541,191 +907,102 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildDeveloperSection(
-      LanguageProvider languageProvider, bool isTablet) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
-      color: Colors.white,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
+  Widget _buildContactSection(LanguageProvider languageProvider, bool isTablet, bool isMobile) {
+    return Container(
+      padding: EdgeInsets.all(isTablet ? 32 : 24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary,
+            AppColors.primary.withOpacity(0.8),
           ],
         ),
-        child: Padding(
-          padding: EdgeInsets.all(isTablet ? 32 : 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.contact_support_rounded,
+            size: isTablet ? 64 : 56,
+            color: Colors.white,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            languageProvider.currentLanguage == 'en' ? 'Get in Touch' : 'Nala Soo Xiriir',
+            style: GoogleFonts.poppins(
+              fontSize: isTablet ? 28 : 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            languageProvider.currentLanguage == 'en'
+                ? 'Have questions or feedback? We\'d love to hear from you!'
+                : 'Ma haysaa su\'aalo ama ra\'yi? Waan jeclaan lahayn inaan ka maqalno!',
+            style: GoogleFonts.poppins(
+              fontSize: isTablet ? 16 : 14,
+              color: Colors.white.withOpacity(0.9),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: isTablet ? 60 : 50,
-                    height: isTablet ? 60 : 50,
-                    decoration: BoxDecoration(
-                      color: Colors.indigo.shade50,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(
-                      Icons.group_outlined,
-                      color: Colors.indigo.shade400,
-                      size: isTablet ? 28 : 24,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    languageProvider.getText('developer_team'),
-                    style: TextStyle(
-                      fontSize: isTablet ? 24 : 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+              _buildContactButton(
+                icon: Icons.email_rounded,
+                label: 'Email',
+                isTablet: isTablet,
               ),
-              const SizedBox(height: 24),
-              _buildTeamMember(
-                'Hassan Mohamed Zubeyr',
-                'Lead Developer',
-                'hassan@gmail.com',
-                Colors.blue.shade400,
-                Icons.code,
-                isTablet,
-              ),
-              _buildTeamMember(
-                'Mohamed Abdikhadir Gelle',
-                'Machine Learning Engineer',
-                'mohamed@gmail.com',
-                Colors.green.shade400,
-                Icons.psychology,
-                isTablet,
-              ),
-              _buildTeamMember(
-                'Mohamed Abdullahi Ali',
-                'UI/UX Designer',
-                'abdullahi@gmail.com',
-                Colors.purple.shade400,
-                Icons.design_services,
-                isTablet,
-              ),
-              _buildTeamMember(
-                'Libaan Abdi Ibraahim',
-                'Content Writer',
-                'libaan@gmail.com',
-                Colors.orange.shade400,
-                Icons.edit,
-                isTablet,
+              const SizedBox(width: 16),
+              _buildContactButton(
+                icon: Icons.phone_rounded,
+                label: 'Phone',
+                isTablet: isTablet,
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildTeamMember(
-    String name,
-    String role,
-    String email,
-    Color color,
-    IconData roleIcon,
-    bool isTablet,
-  ) {
+  Widget _buildContactButton({
+    required IconData icon,
+    required String label,
+    required bool isTablet,
+  }) {
     return Container(
-      margin: EdgeInsets.only(bottom: isTablet ? 20 : 16),
-      padding: EdgeInsets.all(isTablet ? 20 : 16),
+      padding: EdgeInsets.symmetric(
+        horizontal: isTablet ? 24 : 20,
+        vertical: isTablet ? 16 : 12,
+      ),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: Colors.white.withOpacity(0.2),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.grey[200]!,
+          color: Colors.white.withOpacity(0.3),
           width: 1,
         ),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Stack(
-            children: [
-              Container(
-                width: isTablet ? 70 : 60,
-                height: isTablet ? 70 : 60,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [color, color.withOpacity(0.7)],
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    name.split(' ').map((n) => n[0]).take(2).join(),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: isTablet ? 20 : 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.grey[300]!,
-                      width: 1,
-                    ),
-                  ),
-                  child: Icon(
-                    roleIcon,
-                    size: 12,
-                    color: color,
-                  ),
-                ),
-              ),
-            ],
+          Icon(
+            icon,
+            color: Colors.white,
+            size: isTablet ? 24 : 20,
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: isTablet ? 18 : 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  role,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: isTablet ? 16 : 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  email,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: isTablet ? 15 : 13,
-                  ),
-                ),
-              ],
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: isTablet ? 16 : 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

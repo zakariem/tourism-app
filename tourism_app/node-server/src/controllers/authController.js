@@ -77,3 +77,53 @@ exports.verifyToken = async (req, res) => {
         res.status(401).json({ message: 'Invalid token' });
     }
 };
+
+// Update user profile
+exports.updateProfile = async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ message: 'No token provided' });
+        }
+        
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decoded.id;
+        
+        const { email, full_name, username } = req.body;
+        
+        // Check if username or email already exists (excluding current user)
+        const existingUser = await User.findOne({
+            $and: [
+                { _id: { $ne: userId } },
+                { $or: [{ email }, { username }] }
+            ]
+        });
+        
+        if (existingUser) {
+            if (existingUser.email === email) {
+                return res.status(400).json({ message: 'Email already exists' });
+            }
+            if (existingUser.username === username) {
+                return res.status(400).json({ message: 'Username already exists' });
+            }
+        }
+        
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { email, full_name, username },
+            { new: true, runValidators: true }
+        ).select('-password');
+        
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        res.json(updatedUser);
+    } catch (error) {
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ message: 'Invalid token' });
+        }
+        res.status(500).json({ message: error.message });
+    }
+};

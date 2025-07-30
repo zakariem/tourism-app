@@ -159,6 +159,11 @@ class LanguageProvider with ChangeNotifier {
     }
   }
 
+  Future<void> toggleLanguage() async {
+    String newLanguage = _currentLanguage == 'en' ? 'so' : 'en';
+    await setLanguage(newLanguage);
+  }
+
   String getText(String key) {
     return _translations[_currentLanguage]?[key] ?? key;
   }

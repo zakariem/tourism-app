@@ -125,7 +125,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> updateProfile(String email, String fullName) async {
+  Future<bool> updateProfile(String email, String fullName, String username) async {
     if (_currentUser == null) return false;
 
     _isLoading = true;
@@ -145,6 +145,7 @@ class AuthProvider with ChangeNotifier {
         body: jsonEncode({
           'email': email,
           'full_name': fullName,
+          'username': username,
         }),
       );
 
