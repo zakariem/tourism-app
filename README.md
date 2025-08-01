@@ -1,161 +1,281 @@
-# Tourism System with ML-Powered Recommendations
+# 🏛️ Somalia Tourism System
 
-A comprehensive tourism guide application for Somalia, featuring a Flutter mobile app and a Python-based backend for machine learning-powered personalized recommendations.
+A comprehensive tourism guide ecosystem for Somalia, featuring a Flutter mobile app, Node.js backend API, Python-powered AI chat service, and a modern admin dashboard for content management.
 
-## 🏗️ Architecture
+## 🏗️ System Architecture
 
-- **Backend ML Pipeline** (`/backend`): Python scripts for training, evaluating, and exporting the recommendation model.
-- **Flutter Mobile App** (`/tourism_app`): Cross-platform app with integrated TFLite model for on-device recommendations.
+This project consists of four main components:
 
-## 🚀 Features
+1. **📱 Flutter Mobile App** (`/tourism_app`): Cross-platform mobile application with offline support
+2. **🚀 Node.js Backend API** (`/tourism_app/node-server`): RESTful API with MongoDB for data management
+3. **🤖 Python Chat Backend** (`/tourism_app/backend`): AI-powered chat service with multi-provider support
+4. **💻 Admin Dashboard** (`/somalia-tourism-dashboard`): Next.js web interface for content management
 
-### Core App Features
+## ✨ Key Features
 
-- **Tourist Place Discovery**: Browse, search, and filter tourist locations by category (beach, historical, cultural, religious)
-- **Multi-language Support**: English and Somali
-- **User Authentication**: Register, login, and manage user profiles
-- **Favorites Management**: Save and manage favorite places
-- **Offline Support**: Local database for places and favorites
+### 📱 Mobile App Features
+- **🗺️ Tourist Place Discovery**: Browse and explore Somalia's attractions by category
+- **🌍 Multi-language Support**: Full English and Somali localization
+- **👤 User Authentication**: Secure registration, login, and profile management
+- **❤️ Favorites Management**: Save and organize favorite destinations
+- **💬 AI Chat Assistant**: Intelligent tourism guidance with multiple AI providers
+- **📱 Offline Support**: Local SQLite database for core functionality
+- **🎯 Smart Recommendations**: ML-powered personalized suggestions (planned)
 
-### ML-Powered Features
+### 🔧 Backend Features
+- **📊 RESTful API**: Complete CRUD operations for places, users, and bookings
+- **🖼️ Image Management**: Upload, storage, and serving of place images
+- **🔐 JWT Authentication**: Secure token-based authentication system
+- **💳 Payment Integration**: Hormuud payment gateway support
+- **📈 Analytics**: User behavior tracking and insights
 
-- **Personalized Recommendations**: AI-driven suggestions based on user behavior
-- **Behavior Tracking**: Tracks clicks, view time, and language preference
-- **Smart Categorization**: Predicts user preference category
-- **Learning Progress**: Visual indicator of progress towards next recommendation
-- **Confidence Scoring**: (Planned) Show model confidence for recommendations
+### 🤖 AI Chat Features
+- **🧠 Multi-AI Support**: Google Gemini, OpenAI GPT, and Anthropic Claude
+- **🌐 Bilingual Chat**: Intelligent responses in English and Somali
+- **🎯 Context-Aware**: Tourism-focused responses with local knowledge
+- **⚡ Fallback System**: Graceful degradation when AI services are unavailable
 
-## 📊 ML Model Details
+### 💼 Admin Dashboard Features
+- **📝 Content Management**: Add, edit, and delete tourist places
+- **👥 User Management**: Monitor and manage user accounts
+- **📊 Analytics Dashboard**: View usage statistics and insights
+- **🖼️ Media Management**: Upload and organize place images
+- **🎨 Modern UI**: Built with Next.js, Tailwind CSS, and shadcn/ui
 
-- **Training Data**: `tourism_user_behavior.csv` (5,002 user records)
-- **Features**: Click counts (beach, historical, cultural, religious), average view time, language
-- **Output Classes**: Nature (mapped to beach), Religious, Historical, Cultural
-- **Model**: Neural Network (TensorFlow/Keras), exported as TensorFlow Lite (`tourism_model.tflite`)
-- **Preprocessing**: Standardization (mean/scale), label encoding, exported as JSON
+## 🛠️ Technology Stack
 
-## 🛠️ Setup Instructions
+### Frontend
+- **Mobile**: Flutter 3.x, Dart, Provider state management
+- **Admin**: Next.js 14, React, TypeScript, Tailwind CSS, shadcn/ui
 
-### Backend ML Setup
+### Backend
+- **API Server**: Node.js, Express.js, MongoDB, Mongoose
+- **Chat Service**: Python, Flask, AI APIs (Gemini, OpenAI, Claude)
+- **Authentication**: JWT tokens, bcrypt password hashing
+- **File Storage**: Multer for image uploads
 
-1. **Navigate to backend directory:**
-   ```bash
-   cd backend
-   ```
-2. **Install Python dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Train the model:**
-   ```bash
-   python train_model.py
-   ```
-   - This generates `tourism_model.tflite` and `preprocessing_params.json`/`.pkl`.
-4. **Copy model and params to Flutter app:**
-   ```bash
-   cp tourism_model.tflite ../tourism_app/assets/ml/
-   cp preprocessing_params.json ../tourism_app/assets/ml/
-   ```
+### Database
+- **Production**: MongoDB (Node.js backend)
+- **Local**: SQLite (Flutter app offline storage)
 
-### Flutter App Setup
+### AI & ML
+- **Chat AI**: Google Gemini, OpenAI GPT-4, Anthropic Claude
+- **Recommendations**: TensorFlow Lite (planned implementation)
 
-1. **Navigate to app directory:**
-   ```bash
-   cd tourism_app
-   ```
-2. **Install Flutter dependencies:**
-   ```bash
-   flutter pub get
-   ```
-3. **Run the app:**
-   ```bash
-   flutter run
-   ```
-   - The app will seed the local database with places on first launch.
+## 🚀 Quick Start
 
-## 📱 App Usage
+### Prerequisites
+- Node.js 18+ and npm/yarn
+- Python 3.8+
+- Flutter SDK 3.x
+- MongoDB (local or cloud)
+- AI API keys (optional, for chat features)
 
-1. Register or login to the app
-2. Browse and interact with places (click, view details, switch language)
-3. The app tracks your behavior (clicks, view time, language)
-4. After 10+ interactions, the ML model predicts your preferred category
-5. The Home tab displays a "Recommended for You" section with places from your predicted category
-6. The recommendation updates as your behavior changes
+### 1. Clone Repository
+```bash
+git clone <repository-url>
+cd tourism-app
+```
 
-## 🗄️ Database Schema (Flutter App)
+### 2. Setup Node.js Backend
+```bash
+cd tourism_app/node-server
+npm install
 
-- `users`: User accounts
-- `places`: Tourist locations (with category, name, description, image, etc.)
-- `favorites`: User favorite places
-- `chat_messages`: (For support/chat features)
+# Start MongoDB and seed database
+npm run seed
+npm start
+# Server runs on http://localhost:9000
+```
 
-## 🔧 Technical Stack
+### 3. Setup Python Chat Backend
+```bash
+cd tourism_app/backend
+pip install -r requirements.txt
 
-- **Backend**: Python 3.8+, TensorFlow 2.x, Pandas, Scikit-learn
-- **Frontend**: Flutter 3.x, tflite_flutter, SQLite, Provider
+# Configure AI API keys in .env file
+cp env_example.txt .env
+# Edit .env with your API keys
+
+python main.py
+# Chat service runs on http://localhost:5000
+```
+
+### 4. Setup Flutter Mobile App
+```bash
+cd tourism_app
+flutter pub get
+flutter run
+# Choose your target device (Android/iOS/Web)
+```
+
+### 5. Setup Admin Dashboard
+```bash
+cd somalia-tourism-dashboard
+npm install
+npm run dev
+# Dashboard runs on http://localhost:3000
+```
 
 ## 📁 Project Structure
 
 ```
-tourism_sys/
-├── backend/
-│   ├── train_model.py              # ML training script
-│   ├── requirements.txt            # Python dependencies
-│   ├── tourism_user_behavior.csv   # Training dataset
-│   ├── tourism_model.tflite        # Exported TFLite model
-│   ├── preprocessing_params.json   # Preprocessing params for inference
-│   └── ...
-├── tourism_app/
+tourism-app/
+├── 📱 tourism_app/                    # Flutter Mobile App
 │   ├── lib/
-│   │   ├── models/
-│   │   ├── providers/
-│   │   ├── screens/
-│   │   ├── services/
-│   │   ├── utils/
-│   │   └── widgets/
-│   ├── assets/
-│   │   └── ml/                     # ML model and params
-│   └── pubspec.yaml
-└── README.md
+│   │   ├── models/                    # Data models
+│   │   ├── providers/                 # State management
+│   │   ├── screens/                   # UI screens
+│   │   ├── services/                  # API & database services
+│   │   ├── utils/                     # Utilities & constants
+│   │   └── widgets/                   # Reusable UI components
+│   ├── assets/                        # Images, icons, ML models
+│   ├── android/                       # Android configuration
+│   ├── ios/                          # iOS configuration
+│   ├── 🚀 node-server/               # Node.js Backend API
+│   │   ├── src/
+│   │   │   ├── controllers/           # Route controllers
+│   │   │   ├── models/               # MongoDB models
+│   │   │   ├── routes/               # API routes
+│   │   │   └── utils/                # Utilities
+│   │   ├── uploads/                  # Image storage
+│   │   └── server.js                 # Main server file
+│   └── 🤖 backend/                   # Python Chat Backend
+│       ├── main.py                   # Flask app
+│       ├── api_config.py            # AI configuration
+│       └── requirements.txt         # Python dependencies
+├── 💻 somalia-tourism-dashboard/     # Next.js Admin Dashboard
+│   ├── app/                         # Next.js app router
+│   ├── components/                  # React components
+│   ├── lib/                        # Utilities
+│   └── public/                      # Static assets
+└── README.md                        # This file
 ```
 
-## 🎯 ML Workflow
+## 🔧 Configuration
 
-1. **Data Collection**: App tracks user clicks, view time, and language
-2. **Behavior Analysis**: Features are standardized and encoded
-3. **Model Prediction**: TFLite model predicts preferred category
-4. **Recommendation Generation**: App displays places from predicted category
-5. **Continuous Learning**: Recommendations update as user behavior changes
+### Environment Variables
 
-## 🔄 Recommendation Cycle
+#### Node.js Backend (.env)
+```env
+MONGO_URI=mongodb://localhost:27017/tourism_app
+JWT_SECRET=your_jwt_secret_key
+PORT=9000
+```
 
-- **Minimum Data**: 10+ total clicks required for first prediction
-- **Update Frequency**: Every 10 new clicks (behavior resets after each recommendation)
-- **Persistence**: Last recommendation is saved and shown on app restart
+#### Python Chat Backend (.env)
+```env
+GEMINI_API_KEY=your_gemini_api_key
+OPENAI_API_KEY=your_openai_api_key
+CLAUDE_API_KEY=your_claude_api_key
+FLASK_ENV=development
+PORT=5000
+```
+
+### Flutter Configuration
+- Update API endpoints in `lib/providers/auth_provider.dart`
+- Configure Android permissions in `android/app/src/main/AndroidManifest.xml`
+- Add internet permission: `<uses-permission android:name="android.permission.INTERNET" />`
+
+## 📊 API Documentation
+
+### Authentication Endpoints
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `GET /api/auth/profile` - Get user profile
+- `PUT /api/auth/profile` - Update user profile
+
+### Places Endpoints
+- `GET /api/places` - Get all places
+- `GET /api/places/category/:category` - Get places by category
+- `GET /api/places/:id` - Get specific place
+- `POST /api/places` - Create new place (Admin)
+- `PUT /api/places/:id` - Update place (Admin)
+- `DELETE /api/places/:id` - Delete place (Admin)
+
+### Categories
+- `beach` - Beach locations
+- `historical` - Historical sites
+- `cultural` - Cultural centers
+- `religious` - Religious sites
+- `suburb` - Suburban areas
+- `urban park` - Urban parks
 
 ## 🚨 Troubleshooting
 
-- **Model not loading**: Ensure `tourism_model.tflite` and `preprocessing_params.json` are in `assets/ml/`
-- **No recommendations**: Interact with at least 10 places to trigger ML
-- **App crashes**: Check Flutter and Python dependencies, and asset paths
-- **Debugging**: Use console logs for ML and DB operations
+### Common Issues
 
-## 📈 Performance
+#### Flutter App Crashes on Android
+- **Missing Internet Permission**: Add `<uses-permission android:name="android.permission.INTERNET" />` to AndroidManifest.xml
+- **Network Security**: Configure network security for HTTP traffic in production
+- **Database Issues**: Check SQLite initialization in main.dart
 
-- **Model Size**: ~8KB (TFLite optimized)
-- **Inference Time**: <100ms on device
-- **Battery/Memory**: Minimal impact
+#### Backend Connection Issues
+- **MongoDB**: Ensure MongoDB is running and accessible
+- **CORS**: Check CORS configuration for cross-origin requests
+- **Port Conflicts**: Ensure ports 9000 (Node.js) and 5000 (Python) are available
 
-## 🔮 Future Enhancements
+#### Chat Service Issues
+- **API Keys**: Verify AI API keys are correctly configured
+- **Rate Limits**: Check API usage limits and quotas
+- **Fallback**: App provides offline responses when AI services are unavailable
 
-- Real-time learning and confidence indicators
-- Cloud sync for user preferences
-- More advanced analytics and A/B testing
+### Debug Commands
+```bash
+# Check Node.js backend health
+curl http://localhost:9000/api/health
+
+# Check Python chat backend
+curl http://localhost:5000/health
+
+# View MongoDB data
+cd tourism_app/node-server
+npm run show-data
+
+# Flutter verbose logging
+flutter run --verbose
+```
+
+## 🔮 Roadmap
+
+### Phase 1 (Current)
+- ✅ Core mobile app functionality
+- ✅ Backend API with authentication
+- ✅ AI chat integration
+- ✅ Admin dashboard
+
+### Phase 2 (Planned)
+- 🔄 ML-powered recommendations
+- 🔄 Real-time notifications
+- 🔄 Social features (reviews, ratings)
+- 🔄 Advanced analytics
+
+### Phase 3 (Future)
+- 📱 iOS App Store deployment
+- 🌐 Web version of mobile app
+- 🗺️ Interactive maps integration
+- 💳 Enhanced payment options
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 📄 License
 
-This project is for educational and demonstration purposes.
+This project is for educational and demonstration purposes. All rights reserved.
 
-**Note:**
+## 🙏 Acknowledgments
 
-- The ML model requires `tourism_model.tflite` and `preprocessing_params.json` in `tourism_app/assets/ml/` for recommendations to work.
-- The app will function without ML, but recommendations will be disabled.
+- Flutter team for the amazing framework
+- MongoDB for the database solution
+- AI providers (Google, OpenAI, Anthropic) for chat capabilities
+- shadcn/ui for beautiful UI components
+- The open-source community for various packages and tools
+
+---
+
+**Built with ❤️ for Somalia's tourism industry**
