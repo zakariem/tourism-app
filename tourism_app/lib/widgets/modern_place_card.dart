@@ -156,6 +156,7 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
 
   @override
   Widget build(BuildContext context) {
+    // Add null safety check for place object
     final languageProvider = Provider.of<LanguageProvider>(context);
     final category = widget.place['category'] ?? 'unknown';
 

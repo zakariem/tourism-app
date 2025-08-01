@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
 import 'package:tourism_app/providers/favorites_provider.dart';
 import 'package:tourism_app/providers/auth_provider.dart';
-import 'package:tourism_app/services/database_helper.dart';
+import 'package:tourism_app/services/database_adapter.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:tourism_app/providers/user_behavior_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -27,7 +27,7 @@ class PlaceDetailsScreen extends StatefulWidget {
 
 class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
     with TickerProviderStateMixin {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final DatabaseAdapter _dbHelper = DatabaseAdapter.instance;
   final PageController _imagePageController = PageController();
 
   bool _isFavorite = false;

@@ -9,7 +9,26 @@ class PlacesService {
       final response = await http.get(Uri.parse(baseUrl));
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
+        final dynamic responseData = json.decode(response.body);
+        
+        // Handle different response formats
+        List<dynamic> data;
+        if (responseData is List) {
+          data = responseData;
+        } else if (responseData is Map && responseData.containsKey('data')) {
+          // Handle wrapped response like {"data": [...]} from server
+          data = responseData['data'] as List<dynamic>;
+        } else if (responseData is Map && responseData.containsKey('places')) {
+          // Handle wrapped response like {"places": [...]}
+          data = responseData['places'] as List<dynamic>;
+        } else if (responseData is Map) {
+          // Single place object, wrap in list
+          data = [responseData];
+        } else {
+          print('❌ Unexpected response format: $responseData');
+          return [];
+        }
+        
         final places = data.map((place) {
           // Convert to Map and use image_data from MongoDB
           final placeMap = Map<String, dynamic>.from(place);
@@ -40,7 +59,26 @@ class PlacesService {
       final response = await http.get(Uri.parse('$baseUrl/category/$category'));
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
+        final dynamic responseData = json.decode(response.body);
+        
+        // Handle different response formats
+        List<dynamic> data;
+        if (responseData is List) {
+          data = responseData;
+        } else if (responseData is Map && responseData.containsKey('data')) {
+          // Handle wrapped response like {"data": [...]} from server
+          data = responseData['data'] as List<dynamic>;
+        } else if (responseData is Map && responseData.containsKey('places')) {
+          // Handle wrapped response like {"places": [...]}
+          data = responseData['places'] as List<dynamic>;
+        } else if (responseData is Map) {
+          // Single place object, wrap in list
+          data = [responseData];
+        } else {
+          print('❌ Unexpected response format: $responseData');
+          return [];
+        }
+        
         final places = data.map((place) {
           // Convert to Map and use image_data from MongoDB
           final placeMap = Map<String, dynamic>.from(place);

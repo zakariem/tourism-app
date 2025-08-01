@@ -10,9 +10,24 @@ import 'package:tourism_app/screens/dashboard/dashboard_screen.dart';
 import 'package:tourism_app/screens/splash_screen.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:tourism_app/providers/user_behavior_provider.dart';
+import 'package:flutter/foundation.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize database factory for different platforms
+  if (!kIsWeb) {
+    // For mobile (Android/iOS) and desktop platforms
+    try {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    } catch (e) {
+      print('Database initialization failed: $e');
+      // Fallback to default sqflite for mobile
+    }
+  }
+  // For web platform, sqflite will use IndexedDB automatically
 
   print('🚀 Starting app...');
   runApp(const MyApp());

@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
+import 'package:tourism_app/providers/auth_provider.dart';
 import 'package:tourism_app/screens/dashboard/tabs/home_tab.dart';
 import 'package:tourism_app/screens/dashboard/tabs/favorites_tab.dart';
 import 'package:tourism_app/screens/dashboard/tabs/payments_tab.dart';
@@ -17,13 +19,45 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingObserver {
   late int _currentIndex;
+  Timer? _tokenRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    WidgetsBinding.instance.addObserver(this);
+    _startTokenRefreshTimer();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _tokenRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Check and refresh token when app comes to foreground
+      _checkAndRefreshToken();
+    }
+  }
+
+  void _startTokenRefreshTimer() {
+    // Check token every 30 minutes
+    _tokenRefreshTimer = Timer.periodic(const Duration(minutes: 30), (timer) {
+      _checkAndRefreshToken();
+    });
+  }
+
+  void _checkAndRefreshToken() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.isAuthenticated) {
+      authProvider.checkAndRefreshToken();
+    }
   }
 
   final List<Widget> _tabs = [

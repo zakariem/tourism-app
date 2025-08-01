@@ -1,6 +1,6 @@
 const express = require('express');
 const { upload, deleteImageFile } = require('../utils/imageUpload');
-const { addPlace, getAllPlaces, getPlaceById, updatePlace, deletePlace, getPlacesByCategory } = require('../controllers/placeController');
+const { addPlace, getAllPlaces, getPlaceById, updatePlace, deletePlace, getPlacesByCategory, getCacheStats, clearCache } = require('../controllers/placeController');
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 const router = express.Router();
 
@@ -34,6 +34,10 @@ router.delete('/:id', protect, authorizeRoles('admin'), deletePlace);
 router.get('/', getAllPlaces);
 router.get('/category/:category', getPlacesByCategory);
 router.get('/:id', getPlaceById);
+
+// Cache management routes (admin only)
+router.get('/admin/cache-stats', protect, authorizeRoles('admin'), getCacheStats);
+router.post('/admin/clear-cache', protect, authorizeRoles('admin'), clearCache);
 
 // Error handling middleware for multer
 router.use((error, req, res, next) => {

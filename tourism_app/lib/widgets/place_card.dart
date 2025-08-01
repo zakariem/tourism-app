@@ -341,7 +341,7 @@ class _PlaceCardState extends State<PlaceCard> {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Text(
-                                languageProvider.getText(category),
+                                languageProvider.getText(category) ,
                                 style: TextStyle(
                                   color: AppColors.primary,
                                   fontSize: 13,
@@ -507,7 +507,7 @@ class _PlaceCardState extends State<PlaceCard> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              languageProvider.getText(category),
+                              languageProvider.getText(category) ,
                               style: TextStyle(
                                 color: AppColors.primary,
                                 fontSize: 12,

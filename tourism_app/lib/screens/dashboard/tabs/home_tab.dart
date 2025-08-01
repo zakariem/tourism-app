@@ -119,11 +119,16 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     final prefs = await SharedPreferences.getInstance();
     final lastCategory = prefs.getString('last_recommended_category');
     if (lastCategory != null) {
-      final places = await PlacesService.getPlacesByCategory(lastCategory);
-      setState(() {
-        _recommendedCategory = lastCategory;
-        _recommendedPlaces = places;
-      });
+      try {
+        final places = await PlacesService.getPlacesByCategory(lastCategory);
+        
+        setState(() {
+          _recommendedCategory = lastCategory;
+          _recommendedPlaces = places;
+        });
+      } catch (e) {
+        print('❌ Error loading last recommendation: $e');
+      }
     }
   }
 
@@ -822,16 +827,19 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           children: [
             Icon(
               icon,
-              size: 18,
+              size: 16,
               color: isSelected ? Colors.white : AppColors.primary,
             ),
-            const SizedBox(width: 6),
-            Text(
-              categoryText,
-              style: GoogleFonts.poppins(
-                color: isSelected ? Colors.white : AppColors.primary,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                categoryText,
+                style: GoogleFonts.poppins(
+                  color: isSelected ? Colors.white : AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -894,7 +902,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
         ),
         child: Row(
           children: [
-            Icon(
+            const Icon(
               Icons.filter_list,
               color: AppColors.primary,
               size: 18,

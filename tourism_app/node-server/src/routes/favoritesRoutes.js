@@ -4,9 +4,11 @@ const {
     removeFromFavorites,
     getFavorites,
     isFavorite,
-    toggleFavorite
+    toggleFavorite,
+    getFavoritesCacheStats,
+    clearFavoritesCache
 } = require('../controllers/favoritesController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 const router = express.Router();
 
 // All routes are protected and require authentication
@@ -26,5 +28,9 @@ router.get('/check/:placeId', isFavorite);
 
 // DELETE /api/favorites/:placeId - Remove place from favorites
 router.delete('/:placeId', removeFromFavorites);
+
+// Cache management routes (admin only)
+router.get('/admin/cache-stats', authorizeRoles('admin'), getFavoritesCacheStats);
+router.post('/admin/clear-cache', authorizeRoles('admin'), clearFavoritesCache);
 
 module.exports = router;

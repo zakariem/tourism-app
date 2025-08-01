@@ -3,8 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:tourism_app/models/chat_message.dart';
 import 'package:tourism_app/providers/language_provider.dart';
 import 'package:tourism_app/providers/auth_provider.dart';
-import 'package:tourism_app/services/chat_service.dart';
-import 'package:tourism_app/services/database_helper.dart';
+import 'package:tourism_app/services/smart_chat_service.dart';
+import 'package:tourism_app/services/database_adapter.dart';
+import 'package:tourism_app/services/places_service.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:tourism_app/widgets/language_toggle.dart';
 
@@ -20,7 +21,7 @@ class _SupportTabState extends State<SupportTab> with TickerProviderStateMixin {
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
   final ScrollController _scrollController = ScrollController();
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final DatabaseAdapter _dbHelper = DatabaseAdapter.instance;
   late AnimationController _animationController;
   final FocusNode _textFieldFocusNode = FocusNode();
 
@@ -32,6 +33,11 @@ class _SupportTabState extends State<SupportTab> with TickerProviderStateMixin {
       vsync: this,
     );
     _loadMessages();
+    
+    // Auto-scroll when new messages are added
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+    });
   }
 
   Future<void> _loadMessages() async {
@@ -44,6 +50,10 @@ class _SupportTabState extends State<SupportTab> with TickerProviderStateMixin {
       setState(() {
         _messages.addAll(messages.map((m) => ChatMessage.fromMap(m)));
       });
+      // Auto-scroll to bottom after loading messages
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToBottom();
+      });
     }
   }
 
@@ -52,10 +62,29 @@ class _SupportTabState extends State<SupportTab> with TickerProviderStateMixin {
         Provider.of<LanguageProvider>(context, listen: false);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final userId = authProvider.currentUser?['id'];
+    final userName = authProvider.currentUser?['full_name'] ?? 
+                    authProvider.currentUser?['username'] ?? 
+                    (languageProvider.currentLanguage == 'en' ? 'Friend' : 'Saaxiib');
 
     final welcomeMessage = languageProvider.currentLanguage == 'en'
-        ? 'Hello! I\'m your tourism assistant. How can I help you explore Somalia today?'
-        : 'Salaam! Waxaan ahay caawimaadkaaga dalxiiska. Sideen kuu caawin karaa baahitaanka Soomaaliya maanta?';
+        ? '🌟 Welcome $userName to your Smart Somalia Tourism Assistant! 🇸🇴\n\n'
+          'I\'m your intelligent travel companion with access to:\n'
+          '🏖️ All ${await _getPlacesCount()} places in our database\n'
+          '💰 Real-time pricing and cost comparisons\n'
+          '❤️ Your personal favorites and preferences\n'
+          '📅 Smart booking recommendations\n'
+          '🗣️ Multilingual support (English & Somali)\n'
+          '🧠 Context-aware responses\n\n'
+          'I can help you find the cheapest places, plan your itinerary, and answer any tourism questions. Just ask me naturally!'
+        : '🌟 Ku soo dhawoow $userName kaaliyahaaga caqliga leh ee dalxiiska Soomaaliya! 🇸🇴\n\n'
+          'Waxaan ahay saaxiibkaaga safarka ee caqliga leh oo leh:\n'
+          '🏖️ Dhammaan ${await _getPlacesCount()} meelaha xogteenna\n'
+          '💰 Qiimaha iyo isbarbardhigga kharashka\n'
+          '❤️ Meelaha aad jeceshahay iyo dookhyada\n'
+          '📅 Talooyinka caqliga leh ee dalbashada\n'
+          '🗣️ Taageerada luqadaha (Ingiriisi & Soomaali)\n'
+          '🧠 Jawaabaha miyirka leh\n\n'
+          'Waxaan kaa caawin karaa inaad hesho meelaha ugu jaban, qorsheynta safarka, iyo jawaabinta su\'aalaha dalxiiska. Kaliya si dabiici ah i weydiiso!';
 
     final message = ChatMessage(
       message: welcomeMessage,
@@ -67,6 +96,10 @@ class _SupportTabState extends State<SupportTab> with TickerProviderStateMixin {
     final id = await _dbHelper.insertChatMessage(message.toMap());
     setState(() {
       _messages.add(message.copyWith(id: id));
+    });
+    // Auto-scroll to bottom after adding welcome message
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
     });
   }
 
@@ -101,8 +134,8 @@ class _SupportTabState extends State<SupportTab> with TickerProviderStateMixin {
     try {
       final languageProvider =
           Provider.of<LanguageProvider>(context, listen: false);
-      final response = await ChatService.sendMessage(
-          message, languageProvider.currentLanguage);
+      final response = await SmartChatService.sendSmartMessage(
+          message, languageProvider.currentLanguage, authProvider);
 
       // Save assistant message
       final assistantMessage = ChatMessage(
@@ -119,17 +152,36 @@ class _SupportTabState extends State<SupportTab> with TickerProviderStateMixin {
         _messages.add(assistantMessage.copyWith(id: assistantMessageId));
         _isLoading = false;
       });
+      
+      // Auto-scroll to bottom after receiving assistant response
+      _scrollToBottom();
     } catch (e) {
       print('Chat error: $e');
-      final errorMessage = Provider.of<LanguageProvider>(context, listen: false)
-                  .currentLanguage ==
-              'en'
-          ? 'Sorry, I encountered an error. Please try again.'
-          : 'Waan ka xumahay, waxaa dhacay khalad. Fadlan isku day mar kale.';
+      
+      // Enhanced error handling with more specific messages
+      String errorText;
+      final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+      final userName = authProvider.currentUser?['full_name'] ?? 
+                      authProvider.currentUser?['username'] ?? 
+                      (languageProvider.currentLanguage == 'en' ? 'Friend' : 'Saaxiib');
+      
+      if (e.toString().contains('SocketException') || e.toString().contains('TimeoutException')) {
+        errorText = languageProvider.currentLanguage == 'en'
+            ? '📱 $userName, no internet connection detected. I\'m now running in offline mode with smart assistance!\n\n'
+              'I can still help you with places, costs, recommendations, and planning using my built-in knowledge. Ask me anything!'
+            : '📱 $userName, internetka lama heli karo. Hadda waxaan ku shaqeynayaa hab offline ah oo caqli leh!\n\n'
+              'Weli waan kaa caawin karaa meelaha, qiimaha, talooyinka, iyo qorshaynta iyada oo aan isticmaalayo aqoontayda. Wax walba i weydiiso!';
+      } else {
+        errorText = languageProvider.currentLanguage == 'en'
+            ? '🤖 $userName, smart AI backend is temporarily unavailable, but I\'m still here to help with intelligent offline assistance!\n\n'
+              'I have access to all your data and can provide personalized recommendations, cost analysis, and trip planning. Try asking me about the cheapest places or your favorites!'
+            : '🤖 $userName, adeegga AI-ga caqliga leh hadda lama heli karo, laakiin weli halkan baan u joogaa si aan kaaga caawiyo!\n\n'
+              'Waxaan u leeyahay gelitaan dhammaan xogtaada waxaanan bixin karaa talooyinka gaarka ah, falanqaynta qiimaha, iyo qorshaynta safarka. Isku day inaad i weydiiso meelaha ugu jaban ama kuwa aad jeceshahay!';
+      }
 
       // Save error message
       final errorChatMessage = ChatMessage(
-        message: errorMessage,
+        message: errorText,
         isUser: false,
         timestamp: DateTime.now(),
         userId: userId,
@@ -142,13 +194,16 @@ class _SupportTabState extends State<SupportTab> with TickerProviderStateMixin {
         _messages.add(errorChatMessage.copyWith(id: errorMessageId));
         _isLoading = false;
       });
+      
+      // Auto-scroll to bottom after error message
+      _scrollToBottom();
     }
     _scrollToBottom();
   }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
+      if (_scrollController.hasClients && _scrollController.position.maxScrollExtent > 0) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
@@ -320,52 +375,74 @@ class _SupportTabState extends State<SupportTab> with TickerProviderStateMixin {
 
   Widget _buildEmptyState(LanguageProvider languageProvider) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primary.withOpacity(0.1),
-                  AppColors.primary.withOpacity(0.05)
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary.withOpacity(0.1),
+                    AppColors.primary.withOpacity(0.05)
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
               ),
-              borderRadius: BorderRadius.circular(40),
+              child: Icon(
+                Icons.support_agent,
+                size: 64,
+                color: AppColors.primary,
+              ),
             ),
-            child: Icon(
-              Icons.chat_bubble_outline,
-              size: 40,
-              color: AppColors.primary,
+            const SizedBox(height: 24),
+            Text(
+              languageProvider.currentLanguage == 'en'
+                  ? 'Somalia Tourism Assistant'
+                  : 'Kaaliyaha Dalxiiska Soomaaliya',
+              style: const TextStyle(
+                fontSize: 24,
+                color: Colors.black87,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            languageProvider.currentLanguage == 'en'
-                ? 'Start a conversation'
-                : 'Bilow wadahadal',
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
+            const SizedBox(height: 12),
+            Text(
+              languageProvider.currentLanguage == 'en'
+                  ? 'Ask me about:\n• Beach costs and locations\n• Historical sites and fees\n• Accommodation prices\n• Transportation costs\n• Food and dining expenses'
+                  : 'Wax ka weydiiso:\n• Qiimaha xeebaha iyo meelaha\n• Meelaha taariikhiga ah iyo lacagta\n• Qiimaha hoyga\n• Kharashka gaadiidka\n• Cuntada iyo kharashka cuntada',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            languageProvider.currentLanguage == 'en'
-                ? 'Ask me anything about tourism in Somalia'
-                : 'Weydiiso wax kasta oo ku saabsan dalxiiska Soomaaliya',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                languageProvider.currentLanguage == 'en'
+                    ? '💡 Try: "How much does Lido Beach cost?"'
+                    : '💡 Isku day: "Lido Beach immisa ayay ku kacaysaa?"',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.primary,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -649,6 +726,23 @@ class _SupportTabState extends State<SupportTab> with TickerProviderStateMixin {
       return '${difference.inHours}h';
     } else {
       return '${timestamp.day}/${timestamp.month}';
+    }
+  }
+
+  Future<int> _getPlacesCount() async {
+    try {
+      // Use PlacesService to get accurate count from backend API
+      final places = await PlacesService.getAllPlaces();
+      return places.length;
+    } catch (e) {
+      print('❌ Error getting places count from backend: $e');
+      // Fallback to local database
+      try {
+        return await _dbHelper.getPlacesCount();
+      } catch (fallbackError) {
+        print('❌ Error getting places count from local database: $fallbackError');
+        return 50; // Default fallback number
+      }
     }
   }
 

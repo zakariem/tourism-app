@@ -99,12 +99,20 @@ class AuthProvider with ChangeNotifier {
           'username': username,
           'email': email,
           'password': password,
+          'full_name': fullName,
           'role': 'tourist', // or 'admin' if needed
         }),
       );
 
       if (response.statusCode == 201) {
-        _currentUser = jsonDecode(response.body);
+        final responseData = jsonDecode(response.body);
+        _currentUser = responseData;
+        
+        // Store user data in SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user', jsonEncode(responseData));
+        await prefs.setString('token', responseData['token']);
+        
         _isLoading = false;
         notifyListeners();
         return true;
@@ -122,6 +130,12 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> logout() async {
     _currentUser = null;
+    
+    // Clear stored user data
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user');
+    await prefs.remove('token');
+    
     notifyListeners();
   }
 
@@ -168,6 +182,60 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> refreshToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      
+      if (token == null) return false;
+      
+      final response = await http.post(
+        Uri.parse('$_baseUrl/refresh'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 5));
+      
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        await prefs.setString('token', responseData['token']);
+        print('Token refreshed successfully');
+        return true;
+      }
+    } catch (e) {
+      print('Token refresh failed: $e');
+    }
+    return false;
+  }
+
+  // Proactively refresh token if it's about to expire
+  Future<void> checkAndRefreshToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      
+      if (token != null && _currentUser != null) {
+        // Check if token is still valid
+        final response = await http.get(
+          Uri.parse('$_baseUrl/verify'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ).timeout(const Duration(seconds: 3));
+        
+        // If token is invalid or about to expire, refresh it
+        if (response.statusCode == 401) {
+          print('Token expired, refreshing...');
+          await refreshToken();
+        }
+      }
+    } catch (e) {
+      print('Token check failed: $e');
+    }
+  }
+
   Future<bool> checkAuthStatus() async {
     try {
       print('Checking auth status...');
@@ -197,6 +265,15 @@ class AuthProvider with ChangeNotifier {
           print('Token verified, user authenticated');
           notifyListeners();
           return true;
+        } else if (response.statusCode == 401) {
+          // Try to refresh token before giving up
+          print('Token expired, attempting refresh...');
+          if (await refreshToken()) {
+            _currentUser = jsonDecode(userString);
+            print('Token refreshed, user authenticated');
+            notifyListeners();
+            return true;
+          }
         } else {
           print('Token verification failed, clearing stored data');
           // Token invalid, clear stored data

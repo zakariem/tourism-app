@@ -3,12 +3,12 @@ const jwt = require('jsonwebtoken');
 
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: '1h', // Token expires in 1 hour
+        expiresIn: '7d', // Token expires in 7 days
     });
 };
 
 exports.registerUser = async (req, res) => {
-    const { username, email, password, role } = req.body;
+    const { username, email, password, role, full_name } = req.body;
 
     try {
         const userExists = await User.findOne({ email });
@@ -20,6 +20,7 @@ exports.registerUser = async (req, res) => {
             username,
             email,
             password,
+            full_name,
             role: role || 'tourist' // Default to tourist if not specified
         });
 
@@ -27,6 +28,7 @@ exports.registerUser = async (req, res) => {
             _id: user._id,
             username: user.username,
             email: user.email,
+            full_name: user.full_name,
             role: user.role,
             token: generateToken(user._id),
         });
@@ -52,6 +54,7 @@ exports.loginUser = async (req, res) => {
                 _id: user._id,
                 username: user.username,
                 email: user.email,
+                full_name: user.full_name,
                 role: user.role,
                 token: generateToken(user._id),
             });
@@ -75,6 +78,29 @@ exports.verifyToken = async (req, res) => {
         res.status(200).json({ valid: true, userId: decoded.id });
     } catch (error) {
         res.status(401).json({ message: 'Invalid token' });
+    }
+};
+
+// Refresh token endpoint
+exports.refreshToken = async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ message: 'No token provided' });
+        }
+        
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // Generate new token with extended expiration
+        const newToken = generateToken(decoded.id);
+        
+        res.status(200).json({ 
+            token: newToken,
+            message: 'Token refreshed successfully'
+        });
+    } catch (error) {
+        res.status(401).json({ message: 'Invalid or expired token' });
     }
 };
 
