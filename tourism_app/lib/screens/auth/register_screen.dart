@@ -18,7 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _fullNameController = TextEditingController();
+
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
@@ -30,6 +30,12 @@ class _RegisterScreenState extends State<RegisterScreen>
   @override
   void initState() {
     super.initState();
+    // Clear controllers to prevent auto-filling
+    _usernameController.clear();
+    _emailController.clear();
+    _passwordController.clear();
+    _confirmPasswordController.clear();
+    
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
@@ -47,7 +53,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   void dispose() {
     _usernameController.dispose();
     _emailController.dispose();
-    _fullNameController.dispose();
+
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _animationController.dispose();
@@ -61,7 +67,6 @@ class _RegisterScreenState extends State<RegisterScreen>
         _usernameController.text.trim(),
         _passwordController.text,
         _emailController.text.trim(),
-        _fullNameController.text.trim(),
       );
 
       if (success && mounted) {
@@ -85,15 +90,29 @@ class _RegisterScreenState extends State<RegisterScreen>
         );
         Navigator.pushReplacementNamed(context, '/dashboard');
       } else if (mounted) {
+        // Get the specific error message from AuthProvider
+        String errorMessage = authProvider.registrationError ?? 
+            Provider.of<LanguageProvider>(context, listen: false)
+                .getText('registration_failed');
+        
+        // Check if it's a username or email already exists error
+        if (errorMessage.contains('Username already exists')) {
+          errorMessage = 'Username is already taken. Please choose a different username.';
+        } else if (errorMessage.contains('Email already exists')) {
+          errorMessage = 'Email is already registered. Please use a different email or try logging in.';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 const Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 12),
-                Text(
-                  Provider.of<LanguageProvider>(context, listen: false)
-                      .getText('registration_failed'),
+                Expanded(
+                  child: Text(
+                    errorMessage,
+                    style: const TextStyle(fontSize: 14),
+                  ),
                 ),
               ],
             ),
@@ -101,8 +120,12 @@ class _RegisterScreenState extends State<RegisterScreen>
             behavior: SnackBarBehavior.floating,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 4), // Show longer for detailed message
           ),
         );
+        
+        // Do not navigate to dashboard - stay on registration screen
+        return;
       }
     }
   }
@@ -214,9 +237,10 @@ class _RegisterScreenState extends State<RegisterScreen>
                               ),
                               child: Padding(
                                 padding: const EdgeInsets.all(32),
-                                child: Form(
-                                  key: _formKey,
-                                  child: Column(
+                                child: AutofillGroup(
+                                  child: Form(
+                                    key: _formKey,
+                                    child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
                                     children: [
@@ -236,10 +260,23 @@ class _RegisterScreenState extends State<RegisterScreen>
                                         label: languageProvider
                                             .getText('username'),
                                         icon: Icons.person_outline,
+                                        onChanged: (value) {
+                                          setState(() {});
+                                        },
                                         validator: (value) {
                                           if (value == null || value.isEmpty) {
                                             return languageProvider
                                                 .getText('username_required');
+                                          }
+                                          // Check if username starts with a number
+                                          if (RegExp(r'^[0-9]').hasMatch(value)) {
+                                            return languageProvider
+                                                .getText('username_cannot_start_number');
+                                          }
+                                          // Check if username contains symbols (only letters, numbers, and underscore allowed)
+                                          if (!RegExp(r'^[a-zA-Z][a-zA-Z0-9_]*$').hasMatch(value)) {
+                                            return languageProvider
+                                                .getText('username_no_symbols');
                                           }
                                           return null;
                                         },
@@ -253,33 +290,33 @@ class _RegisterScreenState extends State<RegisterScreen>
                                         icon: Icons.email_outlined,
                                         keyboardType:
                                             TextInputType.emailAddress,
+                                        onChanged: (value) {
+                                          setState(() {});
+                                        },
                                         validator: (value) {
                                           if (value == null || value.isEmpty) {
                                             return languageProvider
                                                 .getText('email_required');
                                           }
-                                          if (!value.contains('@')) {
+                                          // Check if email starts with a number
+                                          if (RegExp(r'^[0-9]').hasMatch(value)) {
                                             return languageProvider
-                                                .getText('invalid_email');
+                                                .getText('email_cannot_start_number');
+                                          }
+                                          // Check if email starts with a symbol (except letters)
+                                          if (RegExp(r'^[^a-zA-Z]').hasMatch(value)) {
+                                            return languageProvider
+                                                .getText('email_cannot_start_symbol');
+                                          }
+                                          // Check if email contains invalid symbols (only letters, numbers, and @ allowed)
+                                          if (!RegExp(r'^[a-zA-Z][a-zA-Z0-9]*@[a-zA-Z0-9]+\.[a-zA-Z]+$').hasMatch(value)) {
+                                            return languageProvider
+                                                .getText('email_invalid_symbols');
                                           }
                                           return null;
                                         },
                                       ),
-                                      const SizedBox(height: 16),
-                                      // Full Name Field
-                                      _buildModernTextField(
-                                        controller: _fullNameController,
-                                        label: languageProvider
-                                            .getText('full_name'),
-                                        icon: Icons.badge_outlined,
-                                        validator: (value) {
-                                          if (value == null || value.isEmpty) {
-                                            return languageProvider
-                                                .getText('name_required');
-                                          }
-                                          return null;
-                                        },
-                                      ),
+
                                       const SizedBox(height: 16),
                                       // Password Field
                                       _buildModernTextField(
@@ -288,6 +325,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                             .getText('password'),
                                         icon: Icons.lock_outline,
                                         obscureText: _obscurePassword,
+                                        enableAutoComplete: false,
                                         suffixIcon: IconButton(
                                           icon: Icon(
                                             _obscurePassword
@@ -322,6 +360,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                             .getText('confirm_password'),
                                         icon: Icons.lock_outline,
                                         obscureText: _obscureConfirmPassword,
+                                        enableAutoComplete: false,
                                         suffixIcon: IconButton(
                                           icon: Icon(
                                             _obscureConfirmPassword
@@ -406,6 +445,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                         ),
                                       ),
                                     ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -457,12 +497,18 @@ class _RegisterScreenState extends State<RegisterScreen>
     Widget? suffixIcon,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    void Function(String)? onChanged,
+    bool enableAutoComplete = true,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
+      onChanged: onChanged,
+      autocorrect: false,
+      enableSuggestions: false,
+      autofillHints: enableAutoComplete ? null : [],
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppColors.primary),

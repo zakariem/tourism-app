@@ -17,7 +17,7 @@ class ProfileTab extends StatefulWidget {
 class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  final _fullNameController = TextEditingController();
+
   final _usernameController = TextEditingController();
   bool _isEditing = false;
   bool _isLoading = false;
@@ -60,7 +60,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
   @override
   void dispose() {
     _emailController.dispose();
-    _fullNameController.dispose();
+
     _usernameController.dispose();
     _fadeController.dispose();
     _slideController.dispose();
@@ -71,7 +71,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
     final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
     if (user != null) {
       _emailController.text = user['email'] ?? '';
-      _fullNameController.text = user['full_name'] ?? '';
+
       _usernameController.text = user['username'] ?? '';
     }
   }
@@ -84,7 +84,6 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final success = await authProvider.updateProfile(
       _emailController.text,
-      _fullNameController.text,
       _usernameController.text,
     );
 
@@ -595,16 +594,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
                   },
                 ),
 
-                const SizedBox(height: 20),
 
-                // Full Name Field
-                _buildInputField(
-                  controller: _fullNameController,
-                  label: languageProvider.getText('full_name'),
-                  icon: Icons.person_outline,
-                  enabled: _isEditing,
-                  required: false,
-                ),
               ],
             ),
           ),
@@ -618,8 +608,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
     required String label,
     required IconData icon,
     required bool enabled,
-    String? Function(String?)? validator,
-    bool required = true,
+    String? Function(String?)? validator
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

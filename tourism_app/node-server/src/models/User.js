@@ -15,11 +15,6 @@ const UserSchema = new mongoose.Schema({
         lowercase: true,
         trim: true
     },
-    full_name: {
-        type: String,
-        required: false,
-        trim: true
-    },
     password: {
         type: String,
         required: true

@@ -7,7 +7,7 @@ import 'package:tourism_app/services/smart_chat_service.dart';
 import 'package:tourism_app/services/database_adapter.dart';
 import 'package:tourism_app/services/places_service.dart';
 import 'package:tourism_app/utils/app_colors.dart';
-import 'package:tourism_app/widgets/language_toggle.dart';
+
 
 class SupportTab extends StatefulWidget {
   const SupportTab({Key? key}) : super(key: key);
@@ -62,8 +62,7 @@ class _SupportTabState extends State<SupportTab> with TickerProviderStateMixin {
         Provider.of<LanguageProvider>(context, listen: false);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final userId = authProvider.currentUser?['id'];
-    final userName = authProvider.currentUser?['full_name'] ?? 
-                    authProvider.currentUser?['username'] ?? 
+    final userName = authProvider.currentUser?['username'] ?? 
                     (languageProvider.currentLanguage == 'en' ? 'Friend' : 'Saaxiib');
 
     final welcomeMessage = languageProvider.currentLanguage == 'en'
@@ -161,8 +160,7 @@ class _SupportTabState extends State<SupportTab> with TickerProviderStateMixin {
       // Enhanced error handling with more specific messages
       String errorText;
       final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
-      final userName = authProvider.currentUser?['full_name'] ?? 
-                      authProvider.currentUser?['username'] ?? 
+      final userName = authProvider.currentUser?['username'] ?? 
                       (languageProvider.currentLanguage == 'en' ? 'Friend' : 'Saaxiib');
       
       if (e.toString().contains('SocketException') || e.toString().contains('TimeoutException')) {
@@ -345,8 +343,6 @@ class _SupportTabState extends State<SupportTab> with TickerProviderStateMixin {
                 : 'Tirtir Wadahadalka',
             onPressed: _clearChat,
           ),
-          const SizedBox(width: 8),
-          const LanguageToggle(showLabel: false),
           const SizedBox(width: 16),
         ],
       ),

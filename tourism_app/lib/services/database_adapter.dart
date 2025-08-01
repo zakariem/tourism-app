@@ -203,7 +203,7 @@ class DatabaseAdapter {
     }
   }
 
-  Future<bool> isFavorite(int placeId) async {
+  Future<bool> isFavorite(int placeId, place) async {
     if (kIsWeb) {
       // Web doesn't support favorites operations yet
       return false;

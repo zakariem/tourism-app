@@ -19,7 +19,8 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingObserver {
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
   late int _currentIndex;
   Timer? _tokenRefreshTimer;
 
@@ -105,7 +106,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
           BottomNavigationBarItem(
             icon: const Icon(Icons.payment_outlined),
             activeIcon: const Icon(Icons.payment),
-            label: 'Payments',
+            label: languageProvider.getText('payments'),
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.support_agent_outlined),

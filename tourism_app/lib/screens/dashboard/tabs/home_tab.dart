@@ -8,7 +8,7 @@ import 'package:tourism_app/services/places_service.dart';
 import 'package:tourism_app/services/recommendation_service.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:tourism_app/widgets/modern_place_card.dart';
-import 'package:tourism_app/widgets/language_toggle.dart';
+
 import 'package:tourism_app/screens/dashboard/see_all_recommended_screen.dart';
 import 'package:tourism_app/screens/dashboard/see_all_trending_screen.dart';
 import 'package:tourism_app/screens/dashboard/see_all_places_screen.dart';
@@ -597,10 +597,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                           ),
                         ),
                       ),
-                      const LanguageToggle(
-                        showLabel: false,
-                        iconColor: Colors.white,
-                      ),
+
                     ],
                   ),
 

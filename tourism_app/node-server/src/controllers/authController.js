@@ -8,19 +8,25 @@ const generateToken = (id) => {
 };
 
 exports.registerUser = async (req, res) => {
-    const { username, email, password, role, full_name } = req.body;
+    const { username, email, password, role } = req.body;
 
     try {
-        const userExists = await User.findOne({ email });
-        if (userExists) {
-            return res.status(400).json({ message: 'User already exists' });
+        // Check if email already exists
+        const emailExists = await User.findOne({ email });
+        if (emailExists) {
+            return res.status(400).json({ message: 'Email already exists', field: 'email' });
+        }
+
+        // Check if username already exists
+        const usernameExists = await User.findOne({ username });
+        if (usernameExists) {
+            return res.status(400).json({ message: 'Username already exists', field: 'username' });
         }
 
         const user = await User.create({
             username,
             email,
             password,
-            full_name,
             role: role || 'tourist' // Default to tourist if not specified
         });
 
@@ -28,7 +34,6 @@ exports.registerUser = async (req, res) => {
             _id: user._id,
             username: user.username,
             email: user.email,
-            full_name: user.full_name,
             role: user.role,
             token: generateToken(user._id),
         });
@@ -54,7 +59,6 @@ exports.loginUser = async (req, res) => {
                 _id: user._id,
                 username: user.username,
                 email: user.email,
-                full_name: user.full_name,
                 role: user.role,
                 token: generateToken(user._id),
             });
@@ -116,7 +120,7 @@ exports.updateProfile = async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const userId = decoded.id;
         
-        const { email, full_name, username } = req.body;
+        const { email, username } = req.body;
         
         // Check if username or email already exists (excluding current user)
         const existingUser = await User.findOne({
@@ -137,7 +141,7 @@ exports.updateProfile = async (req, res) => {
         
         const updatedUser = await User.findByIdAndUpdate(
             userId,
-            { email, full_name, username },
+            { email, username },
             { new: true, runValidators: true }
         ).select('-password');
         

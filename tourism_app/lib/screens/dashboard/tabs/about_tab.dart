@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
 import 'package:tourism_app/utils/app_colors.dart';
-import 'package:tourism_app/widgets/language_toggle.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 
 class AboutTab extends StatefulWidget {
@@ -206,20 +206,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
           ),
         ),
       ),
-      actions: [
-        Container(
-          margin: const EdgeInsets.only(right: 16, top: 8),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.3),
-              width: 1,
-            ),
-          ),
-          child: const LanguageToggle(showLabel: false),
-        ),
-      ],
+
     );
   }
 

@@ -86,9 +86,13 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  String? _registrationError;
+  String? get registrationError => _registrationError;
+
   Future<bool> register(
-      String username, String password, String email, String fullName) async {
+      String username, String password, String email) async {
     _isLoading = true;
+    _registrationError = null;
     notifyListeners();
 
     try {
@@ -99,7 +103,6 @@ class AuthProvider with ChangeNotifier {
           'username': username,
           'email': email,
           'password': password,
-          'full_name': fullName,
           'role': 'tourist', // or 'admin' if needed
         }),
       );
@@ -117,11 +120,19 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       } else {
+        // Handle specific error messages
+        if (response.statusCode == 400) {
+          final errorData = jsonDecode(response.body);
+          _registrationError = errorData['message'] ?? 'Registration failed';
+        } else {
+          _registrationError = 'Registration failed';
+        }
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
+      _registrationError = 'Network error occurred';
       _isLoading = false;
       notifyListeners();
       return false;
@@ -139,7 +150,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> updateProfile(String email, String fullName, String username) async {
+  Future<bool> updateProfile(String email, String username) async {
     if (_currentUser == null) return false;
 
     _isLoading = true;
@@ -158,7 +169,6 @@ class AuthProvider with ChangeNotifier {
         },
         body: jsonEncode({
           'email': email,
-          'full_name': fullName,
           'username': username,
         }),
       );

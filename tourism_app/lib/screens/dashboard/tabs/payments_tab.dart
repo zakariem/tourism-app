@@ -53,8 +53,9 @@ class _PaymentsTabState extends State<PaymentsTab> {
 
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (!authProvider.isAuthenticated) {
+        final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
         setState(() {
-          _error = 'Please login to view payment history';
+          _error = languageProvider.getText('please_login_payment_history');
           _isLoading = false;
         });
         return;
@@ -79,20 +80,23 @@ class _PaymentsTabState extends State<PaymentsTab> {
             _isLoading = false;
           });
         } else {
+          final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
           setState(() {
-            _error = responseData['message'] ?? 'Failed to load payment history';
+            _error = responseData['message'] ?? languageProvider.getText('failed_load_payment_history');
             _isLoading = false;
           });
         }
       } else {
+        final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
         setState(() {
-          _error = 'Failed to load payment history';
+          _error = languageProvider.getText('failed_load_payment_history');
           _isLoading = false;
         });
       }
     } catch (error) {
+      final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
       setState(() {
-        _error = 'Network error. Please check your connection.';
+        _error = languageProvider.getText('network_error_check_connection');
         _isLoading = false;
       });
     }
@@ -179,7 +183,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Payment History',
+                          languageProvider.getText('payment_history'),
                           style: GoogleFonts.poppins(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -187,7 +191,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
                           ),
                         ),
                         Text(
-                          'Track your booking payments',
+                          languageProvider.getText('track_booking_payments'),
                           style: GoogleFonts.poppins(
                             fontSize: 14,
                             color: Colors.grey[600],
@@ -218,6 +222,8 @@ class _PaymentsTabState extends State<PaymentsTab> {
   }
 
   Widget _buildContent() {
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    
     if (_isLoading && _payments.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(),
@@ -253,7 +259,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
                 ),
               ),
               child: Text(
-                'Retry',
+                languageProvider.getText('retry'),
                 style: GoogleFonts.poppins(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
@@ -277,20 +283,22 @@ class _PaymentsTabState extends State<PaymentsTab> {
             ),
             const SizedBox(height: 16),
             Text(
-              'No payment history found',
+              languageProvider.getText('no_payments_made'),
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: Colors.grey[600],
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              'Your booking payments will appear here',
+              languageProvider.getText('make_first_booking'),
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 color: Colors.grey[500],
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -355,7 +363,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          payment['placeName'] ?? 'Unknown Place',
+                          payment['placeName'] ?? Provider.of<LanguageProvider>(context).getText('unknown_place'),
                           style: GoogleFonts.poppins(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -399,14 +407,14 @@ class _PaymentsTabState extends State<PaymentsTab> {
                   Expanded(
                     child: _buildDetailItem(
                       Icons.people,
-                      'Visitors',
-                      '${payment['visitorCount']} people',
+                      Provider.of<LanguageProvider>(context).getText('visitors'),
+                      '${payment['visitorCount']} ${Provider.of<LanguageProvider>(context).getText('people')}',
                     ),
                   ),
                   Expanded(
                     child: _buildDetailItem(
                       Icons.schedule,
-                      'Time',
+                      Provider.of<LanguageProvider>(context).getText('time'),
                       payment['timeSlot'] ?? 'N/A',
                     ),
                   ),
@@ -428,7 +436,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Total Amount:',
+                          Provider.of<LanguageProvider>(context).getText('total_amount'),
                           style: GoogleFonts.poppins(
                             fontSize: 14,
                             color: Colors.grey[600],
@@ -449,7 +457,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Paid Amount:',
+                          Provider.of<LanguageProvider>(context).getText('paid_amount'),
                           style: GoogleFonts.poppins(
                             fontSize: 12,
                             color: Colors.grey[500],
@@ -480,7 +488,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Paid on ${DateFormat('MMM dd, yyyy • hh:mm a').format(paidAt)}',
+                    '${Provider.of<LanguageProvider>(context).getText('paid_on')} ${DateFormat('MMM dd, yyyy • hh:mm a').format(paidAt)}',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       color: Colors.grey[500],
@@ -551,7 +559,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'Payment Details',
+          Provider.of<LanguageProvider>(context).getText('payment_details'),
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.bold,
             color: AppColors.primary,
@@ -562,18 +570,18 @@ class _PaymentsTabState extends State<PaymentsTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildDetailRow('Place:', payment['placeName'] ?? 'N/A'),
-              _buildDetailRow('Booking Date:', DateFormat('MMM dd, yyyy').format(DateTime.parse(payment['bookingDate']))),
-              _buildDetailRow('Time Slot:', payment['timeSlot'] ?? 'N/A'),
-              _buildDetailRow('Visitors:', '${payment['visitorCount']} people'),
-              _buildDetailRow('Contact Name:', payment['userFullName'] ?? 'N/A'),
-              _buildDetailRow('Phone:', payment['userAccountNo'] ?? 'N/A'),
-              _buildDetailRow('Total Amount:', '\$${(payment['totalAmount'] ?? 0).toStringAsFixed(2)}'),
-              _buildDetailRow('Paid Amount:', '\$${(payment['actualPaidAmount'] ?? 0).toStringAsFixed(2)} (Test)'),
-              _buildDetailRow('Status:', payment['bookingStatus']?.toUpperCase() ?? 'PENDING'),
-              _buildDetailRow('Payment Date:', DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.parse(payment['paidAt']))),
+              _buildDetailRow(Provider.of<LanguageProvider>(context).getText('place'), payment['placeName'] ?? 'N/A'),
+              _buildDetailRow(Provider.of<LanguageProvider>(context).getText('booking_date'), DateFormat('MMM dd, yyyy').format(DateTime.parse(payment['bookingDate']))),
+              _buildDetailRow(Provider.of<LanguageProvider>(context).getText('time_slot'), payment['timeSlot'] ?? 'N/A'),
+              _buildDetailRow(Provider.of<LanguageProvider>(context).getText('visitors'), '${payment['visitorCount']} ${Provider.of<LanguageProvider>(context).getText('people')}'),
+              _buildDetailRow(Provider.of<LanguageProvider>(context).getText('contact_name'), payment['userFullName'] ?? 'N/A'),
+              _buildDetailRow(Provider.of<LanguageProvider>(context).getText('phone'), payment['userAccountNo'] ?? 'N/A'),
+              _buildDetailRow(Provider.of<LanguageProvider>(context).getText('total_amount'), '\$${(payment['totalAmount'] ?? 0).toStringAsFixed(2)}'),
+              _buildDetailRow(Provider.of<LanguageProvider>(context).getText('paid_amount'), '\$${(payment['actualPaidAmount'] ?? 0).toStringAsFixed(2)} (Test)'),
+              _buildDetailRow(Provider.of<LanguageProvider>(context).getText('status'), payment['bookingStatus']?.toUpperCase() ?? 'PENDING'),
+              _buildDetailRow(Provider.of<LanguageProvider>(context).getText('payment_date'), DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.parse(payment['paidAt']))),
               if (payment['waafiResponse'] != null && payment['waafiResponse']['transactionId'] != null)
-                _buildDetailRow('Transaction ID:', payment['waafiResponse']['transactionId']),
+                _buildDetailRow(Provider.of<LanguageProvider>(context).getText('transaction_id'), payment['waafiResponse']['transactionId']),
             ],
           ),
         ),
@@ -581,7 +589,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'Close',
+              Provider.of<LanguageProvider>(context).getText('close'),
               style: GoogleFonts.poppins(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w600,

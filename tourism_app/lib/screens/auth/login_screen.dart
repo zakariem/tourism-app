@@ -26,6 +26,10 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
+    // Clear controllers to prevent auto-filling
+    _usernameController.clear();
+    _passwordController.clear();
+    
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
@@ -204,9 +208,10 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                               child: Padding(
                                 padding: const EdgeInsets.all(32),
-                                child: Form(
-                                  key: _formKey,
-                                  child: Column(
+                                child: AutofillGroup(
+                                  child: Form(
+                                    key: _formKey,
+                                    child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
                                     children: [
@@ -226,10 +231,23 @@ class _LoginScreenState extends State<LoginScreen>
                                         label: languageProvider
                                             .getText('username'),
                                         icon: Icons.person_outline,
+                                        onChanged: (value) {
+                                          setState(() {});
+                                        },
                                         validator: (value) {
                                           if (value == null || value.isEmpty) {
                                             return languageProvider
                                                 .getText('username_required');
+                                          }
+                                          // Check if username starts with a number
+                                          if (RegExp(r'^[0-9]').hasMatch(value)) {
+                                            return languageProvider
+                                                .getText('username_cannot_start_number');
+                                          }
+                                          // Check if username contains symbols (only letters, numbers, and underscore allowed)
+                                          if (!RegExp(r'^[a-zA-Z][a-zA-Z0-9_]*$').hasMatch(value)) {
+                                            return languageProvider
+                                                .getText('username_no_symbols');
                                           }
                                           return null;
                                         },
@@ -242,6 +260,7 @@ class _LoginScreenState extends State<LoginScreen>
                                             .getText('password'),
                                         icon: Icons.lock_outline,
                                         obscureText: _obscurePassword,
+                                        enableAutoComplete: false,
                                         suffixIcon: IconButton(
                                           icon: Icon(
                                             _obscurePassword
@@ -321,6 +340,7 @@ class _LoginScreenState extends State<LoginScreen>
                                         ),
                                       ),
                                     ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -374,11 +394,19 @@ class _LoginScreenState extends State<LoginScreen>
     bool obscureText = false,
     Widget? suffixIcon,
     String? Function(String?)? validator,
+    void Function(String)? onChanged,
+    TextInputType? keyboardType,
+    bool enableAutoComplete = true,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
       validator: validator,
+      onChanged: onChanged,
+      keyboardType: keyboardType,
+      autocorrect: false,
+      enableSuggestions: false,
+      autofillHints: enableAutoComplete ? null : [],
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppColors.primary),
