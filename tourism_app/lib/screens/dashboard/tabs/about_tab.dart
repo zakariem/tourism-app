@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
+import 'package:tourism_app/providers/auth_provider.dart';
+import 'package:tourism_app/providers/user_behavior_provider.dart';
+import 'package:tourism_app/services/app_statistics_service.dart';
 import 'package:tourism_app/utils/app_colors.dart';
-
 import 'package:google_fonts/google_fonts.dart';
+
 
 class AboutTab extends StatefulWidget {
   const AboutTab({Key? key}) : super(key: key);
@@ -82,6 +85,8 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                     _buildFeaturesGrid(languageProvider, isTablet, isMobile),
                     const SizedBox(height: 32),
                     _buildStatsSection(languageProvider, isTablet, isMobile),
+                    const SizedBox(height: 32),
+                    _buildUserActivitySection(languageProvider, isTablet, isMobile),
                     const SizedBox(height: 32),
                     _buildTeamSection(languageProvider, isTablet, isMobile),
                     const SizedBox(height: 32),
@@ -547,128 +552,348 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
   }
 
   Widget _buildStatsSection(LanguageProvider languageProvider, bool isTablet, bool isMobile) {
-    final stats = [
-      {
-        'number': '50+',
-        'label': languageProvider.currentLanguage == 'en' ? 'Tourist Places' : 'Meelaha Dalxiiska',
-        'icon': Icons.place_rounded,
-        'color': const Color(0xFF3B82F6),
-      },
-      {
-        'number': '4',
-        'label': languageProvider.currentLanguage == 'en' ? 'Categories' : 'Qaybaha',
-        'icon': Icons.category_rounded,
-        'color': const Color(0xFF10B981),
-      },
-      {
-        'number': '2',
-        'label': languageProvider.currentLanguage == 'en' ? 'Languages' : 'Luuqadaha',
-        'icon': Icons.language_rounded,
-        'color': const Color(0xFFEF4444),
-      },
-      {
-        'number': '24/7',
-        'label': languageProvider.currentLanguage == 'en' ? 'Support' : 'Taageero',
-        'icon': Icons.support_agent_rounded,
-        'color': const Color(0xFF8B5CF6),
-      },
-    ];
+    return Consumer2<UserBehaviorProvider, AuthProvider>(
+      builder: (context, userBehavior, authProvider, child) {
+        return FutureBuilder<Map<String, dynamic>>(
+          future: AppStatisticsService.getAppStatistics(
+            userBehavior: userBehavior,
+            authProvider: authProvider,
+          ),
+          builder: (context, snapshot) {
+            final stats = snapshot.hasData ? [
+              {
+                'number': '${snapshot.data!['totalPlaces']}',
+                'label': languageProvider.currentLanguage == 'en' ? 'Tourist Places' : 'Meelaha Dalxiiska',
+                'icon': Icons.place_rounded,
+                'color': const Color(0xFF3B82F6),
+              },
+              {
+                'number': '${snapshot.data!['categoriesCount']}',
+                'label': languageProvider.currentLanguage == 'en' ? 'Categories' : 'Qaybaha',
+                'icon': Icons.category_rounded,
+                'color': const Color(0xFF10B981),
+              },
+              {
+                'number': '2',
+                'label': languageProvider.currentLanguage == 'en' ? 'Languages' : 'Luuqadaha',
+                'icon': Icons.language_rounded,
+                'color': const Color(0xFFEF4444),
+              },
+              {
+                'number': '${snapshot.data!['favoritesCount']}',
+                'label': languageProvider.currentLanguage == 'en' ? 'Favorites' : 'Jecelka',
+                'icon': Icons.favorite_rounded,
+                'color': const Color(0xFF8B5CF6),
+              },
+            ] : [
+          {
+            'number': '...',
+            'label': languageProvider.currentLanguage == 'en' ? 'Tourist Places' : 'Meelaha Dalxiiska',
+            'icon': Icons.place_rounded,
+            'color': const Color(0xFF3B82F6),
+          },
+          {
+            'number': '...',
+            'label': languageProvider.currentLanguage == 'en' ? 'Categories' : 'Qaybaha',
+            'icon': Icons.category_rounded,
+            'color': const Color(0xFF10B981),
+          },
+          {
+            'number': '...',
+            'label': languageProvider.currentLanguage == 'en' ? 'Languages' : 'Luuqadaha',
+            'icon': Icons.language_rounded,
+            'color': const Color(0xFFEF4444),
+          },
+          {
+            'number': '24/7',
+            'label': languageProvider.currentLanguage == 'en' ? 'Support' : 'Taageero',
+            'icon': Icons.support_agent_rounded,
+            'color': const Color(0xFF8B5CF6),
+          },
+        ];
 
-    return Container(
-      padding: EdgeInsets.all(isTablet ? 32 : 24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primary.withOpacity(0.05),
-            AppColors.primary.withOpacity(0.02),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: AppColors.primary.withOpacity(0.1),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        children: [
-          Text(
-            languageProvider.currentLanguage == 'en' ? 'App Statistics' : 'Tirakoobka App-ka',
-            style: GoogleFonts.poppins(
-              fontSize: isTablet ? 28 : 24,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF1F2937),
+        return Container(
+          padding: EdgeInsets.all(isTablet ? 32 : 24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.primary.withOpacity(0.05),
+                AppColors.primary.withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: AppColors.primary.withOpacity(0.1),
+              width: 1,
             ),
           ),
-          const SizedBox(height: 24),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: isMobile ? 2 : 4,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: isMobile ? 1.2 : 1.0,
-            ),
-            itemCount: stats.length,
-            itemBuilder: (context, index) {
-              final stat = stats[index];
-              return Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
+          child: Column(
+            children: [
+              Text(
+                languageProvider.currentLanguage == 'en' ? 'App Statistics' : 'Tirakoobka App-ka',
+                style: GoogleFonts.poppins(
+                  fontSize: isTablet ? 28 : 24,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1F2937),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
+              ),
+              const SizedBox(height: 24),
+              if (snapshot.connectionState == ConnectionState.waiting)
+                const Center(
+                  child: CircularProgressIndicator(),
+                )
+              else
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: isMobile ? 2 : 4,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: isMobile ? 1.2 : 1.0,
+                  ),
+                  itemCount: stats.length,
+                  itemBuilder: (context, index) {
+                    final stat = stats[index];
+                    return Container(
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: (stat['color'] as Color).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(14),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
                       ),
-                      child: Icon(
-                        stat['icon'] as IconData,
-                        color: stat['color'] as Color,
-                        size: 24,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: (stat['color'] as Color).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Icon(
+                              stat['icon'] as IconData,
+                              color: stat['color'] as Color,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            stat['number'] as String,
+                            style: GoogleFonts.poppins(
+                              fontSize: isTablet ? 28 : 24,
+                              fontWeight: FontWeight.bold,
+                              color: stat['color'] as Color,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            stat['label'] as String,
+                            style: GoogleFonts.poppins(
+                              fontSize: isTablet ? 14 : 12,
+                              color: const Color(0xFF6B7280),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      stat['number'] as String,
-                      style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 28 : 24,
-                        fontWeight: FontWeight.bold,
-                        color: stat['color'] as Color,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      stat['label'] as String,
-                      style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 14 : 12,
-                        color: const Color(0xFF6B7280),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              );
-            },
+            ],
+           ),
+         );
+       },
+     );
+     },
+   );
+  }
+
+  Widget _buildUserActivitySection(LanguageProvider languageProvider, bool isTablet, bool isMobile) {
+    return Consumer<UserBehaviorProvider>(
+      builder: (context, userBehavior, child) {
+        final totalClicks = userBehavior.beachClicks + 
+                           userBehavior.historicalClicks + 
+                           userBehavior.culturalClicks + 
+                           userBehavior.religiousClicks;
+        
+        if (totalClicks == 0) {
+          return const SizedBox.shrink(); // Hide if no activity
+        }
+        
+        final activityStats = [
+          {
+            'number': '${userBehavior.beachClicks}',
+            'label': languageProvider.currentLanguage == 'en' ? 'Beach Visits' : 'Booqashada Xeebaha',
+            'icon': Icons.beach_access_rounded,
+            'color': const Color(0xFF06B6D4),
+          },
+          {
+            'number': '${userBehavior.historicalClicks}',
+            'label': languageProvider.currentLanguage == 'en' ? 'Historical Sites' : 'Meelaha Taariikhiga',
+            'icon': Icons.account_balance_rounded,
+            'color': const Color(0xFF8B5CF6),
+          },
+          {
+            'number': '${userBehavior.culturalClicks}',
+            'label': languageProvider.currentLanguage == 'en' ? 'Cultural Places' : 'Meelaha Dhaqanka',
+            'icon': Icons.museum_rounded,
+            'color': const Color(0xFF10B981),
+          },
+          {
+            'number': '${userBehavior.religiousClicks}',
+            'label': languageProvider.currentLanguage == 'en' ? 'Religious Sites' : 'Meelaha Diinta',
+            'icon': Icons.mosque_rounded,
+            'color': const Color(0xFFEF4444),
+          },
+        ];
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: 32),
+          padding: EdgeInsets.all(isTablet ? 32 : 24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF06B6D4).withOpacity(0.05),
+                const Color(0xFF8B5CF6).withOpacity(0.05),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFF06B6D4).withOpacity(0.1),
+              width: 1,
+            ),
           ),
-        ],
-      ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF06B6D4), Color(0xFF8B5CF6)],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.analytics_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          languageProvider.currentLanguage == 'en' 
+                              ? 'Your Activity' 
+                              : 'Waxqabadkaaga',
+                          style: GoogleFonts.poppins(
+                            fontSize: isTablet ? 24 : 20,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1F2937),
+                          ),
+                        ),
+                        Text(
+                          languageProvider.currentLanguage == 'en'
+                              ? 'Total interactions: $totalClicks'
+                              : 'Wadarta falgalka: $totalClicks',
+                          style: GoogleFonts.poppins(
+                            fontSize: isTablet ? 16 : 14,
+                            color: const Color(0xFF6B7280),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: isMobile ? 2 : 4,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: isMobile ? 1.2 : 1.0,
+                ),
+                itemCount: activityStats.length,
+                itemBuilder: (context, index) {
+                  final stat = activityStats[index];
+                  return Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: (stat['color'] as Color).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            stat['icon'] as IconData,
+                            color: stat['color'] as Color,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          stat['number'] as String,
+                          style: GoogleFonts.poppins(
+                            fontSize: isTablet ? 28 : 24,
+                            fontWeight: FontWeight.bold,
+                            color: stat['color'] as Color,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          stat['label'] as String,
+                          style: GoogleFonts.poppins(
+                            fontSize: isTablet ? 14 : 12,
+                            color: const Color(0xFF6B7280),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
