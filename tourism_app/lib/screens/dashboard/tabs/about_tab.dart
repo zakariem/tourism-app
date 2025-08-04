@@ -6,7 +6,7 @@ import 'package:tourism_app/providers/user_behavior_provider.dart';
 import 'package:tourism_app/services/app_statistics_service.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:url_launcher/url_launcher.dart';
 
 class AboutTab extends StatefulWidget {
   const AboutTab({Key? key}) : super(key: key);
@@ -86,7 +86,8 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                     const SizedBox(height: 32),
                     _buildStatsSection(languageProvider, isTablet, isMobile),
                     const SizedBox(height: 32),
-                    _buildUserActivitySection(languageProvider, isTablet, isMobile),
+                    _buildUserActivitySection(
+                        languageProvider, isTablet, isMobile),
                     const SizedBox(height: 32),
                     _buildTeamSection(languageProvider, isTablet, isMobile),
                     const SizedBox(height: 32),
@@ -211,11 +212,11 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
           ),
         ),
       ),
-
     );
   }
 
-  Widget _buildHeroSection(LanguageProvider languageProvider, bool isTablet, bool isMobile) {
+  Widget _buildHeroSection(
+      LanguageProvider languageProvider, bool isTablet, bool isMobile) {
     return Container(
       padding: EdgeInsets.all(isTablet ? 40 : 24),
       decoration: BoxDecoration(
@@ -298,7 +299,8 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildAboutSection(LanguageProvider languageProvider, bool isTablet, bool isMobile) {
+  Widget _buildAboutSection(
+      LanguageProvider languageProvider, bool isTablet, bool isMobile) {
     return Container(
       padding: EdgeInsets.all(isTablet ? 32 : 24),
       decoration: BoxDecoration(
@@ -365,11 +367,14 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildFeaturesGrid(LanguageProvider languageProvider, bool isTablet, bool isMobile) {
+  Widget _buildFeaturesGrid(
+      LanguageProvider languageProvider, bool isTablet, bool isMobile) {
     final features = [
       {
         'icon': Icons.location_on_rounded,
-        'title': languageProvider.currentLanguage == 'en' ? 'Discover Places' : 'Baadh Meelaha',
+        'title': languageProvider.currentLanguage == 'en'
+            ? 'Discover Places'
+            : 'Baadh Meelaha',
         'description': languageProvider.currentLanguage == 'en'
             ? 'Explore amazing tourist destinations across Somalia'
             : 'Baadh meelaha dalxiiska ee cajiibka ah ee Soomaaliya',
@@ -377,7 +382,9 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
       },
       {
         'icon': Icons.favorite_rounded,
-        'title': languageProvider.currentLanguage == 'en' ? 'Save Favorites' : 'Kaydi Kuwa Aad Jeceshahay',
+        'title': languageProvider.currentLanguage == 'en'
+            ? 'Save Favorites'
+            : 'Kaydi Kuwa Aad Jeceshahay',
         'description': languageProvider.currentLanguage == 'en'
             ? 'Keep track of your favorite places and create wishlists'
             : 'La soco meelaha aad jeceshahay oo samee liisaska rabitaankaaga',
@@ -385,7 +392,9 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
       },
       {
         'icon': Icons.smart_toy_rounded,
-        'title': languageProvider.currentLanguage == 'en' ? 'AI Assistant' : 'Caawimaadka AI',
+        'title': languageProvider.currentLanguage == 'en'
+            ? 'AI Assistant'
+            : 'Caawimaadka AI',
         'description': languageProvider.currentLanguage == 'en'
             ? 'Get personalized recommendations from our smart AI'
             : 'Ka hel talooyinka gaarka ah caawimaadkeenna caqliga ah',
@@ -393,7 +402,9 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
       },
       {
         'icon': Icons.language_rounded,
-        'title': languageProvider.currentLanguage == 'en' ? 'Multi-language' : 'Luuqado Badan',
+        'title': languageProvider.currentLanguage == 'en'
+            ? 'Multi-language'
+            : 'Luuqado Badan',
         'description': languageProvider.currentLanguage == 'en'
             ? 'Available in English and Somali languages'
             : 'Waxaa lagu heli karaa luuqadaha Ingiriisiga iyo Soomaaliga',
@@ -440,7 +451,9 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
-                  languageProvider.currentLanguage == 'en' ? 'Key Features' : 'Sifooyinka Muhiimka ah',
+                  languageProvider.currentLanguage == 'en'
+                      ? 'Key Features'
+                      : 'Sifooyinka Muhiimka ah',
                   style: GoogleFonts.poppins(
                     fontSize: isTablet ? 28 : 24,
                     fontWeight: FontWeight.bold,
@@ -551,7 +564,8 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildStatsSection(LanguageProvider languageProvider, bool isTablet, bool isMobile) {
+  Widget _buildStatsSection(
+      LanguageProvider languageProvider, bool isTablet, bool isMobile) {
     return Consumer2<UserBehaviorProvider, AuthProvider>(
       builder: (context, userBehavior, authProvider, child) {
         return FutureBuilder<Map<String, dynamic>>(
@@ -560,204 +574,234 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
             authProvider: authProvider,
           ),
           builder: (context, snapshot) {
-            final stats = snapshot.hasData ? [
-              {
-                'number': '${snapshot.data!['totalPlaces']}',
-                'label': languageProvider.currentLanguage == 'en' ? 'Tourist Places' : 'Meelaha Dalxiiska',
-                'icon': Icons.place_rounded,
-                'color': const Color(0xFF3B82F6),
-              },
-              {
-                'number': '${snapshot.data!['categoriesCount']}',
-                'label': languageProvider.currentLanguage == 'en' ? 'Categories' : 'Qaybaha',
-                'icon': Icons.category_rounded,
-                'color': const Color(0xFF10B981),
-              },
-              {
-                'number': '2',
-                'label': languageProvider.currentLanguage == 'en' ? 'Languages' : 'Luuqadaha',
-                'icon': Icons.language_rounded,
-                'color': const Color(0xFFEF4444),
-              },
-              {
-                'number': '${snapshot.data!['favoritesCount']}',
-                'label': languageProvider.currentLanguage == 'en' ? 'Favorites' : 'Jecelka',
-                'icon': Icons.favorite_rounded,
-                'color': const Color(0xFF8B5CF6),
-              },
-            ] : [
-          {
-            'number': '...',
-            'label': languageProvider.currentLanguage == 'en' ? 'Tourist Places' : 'Meelaha Dalxiiska',
-            'icon': Icons.place_rounded,
-            'color': const Color(0xFF3B82F6),
-          },
-          {
-            'number': '...',
-            'label': languageProvider.currentLanguage == 'en' ? 'Categories' : 'Qaybaha',
-            'icon': Icons.category_rounded,
-            'color': const Color(0xFF10B981),
-          },
-          {
-            'number': '...',
-            'label': languageProvider.currentLanguage == 'en' ? 'Languages' : 'Luuqadaha',
-            'icon': Icons.language_rounded,
-            'color': const Color(0xFFEF4444),
-          },
-          {
-            'number': '24/7',
-            'label': languageProvider.currentLanguage == 'en' ? 'Support' : 'Taageero',
-            'icon': Icons.support_agent_rounded,
-            'color': const Color(0xFF8B5CF6),
-          },
-        ];
+            final stats = snapshot.hasData
+                ? [
+                    {
+                      'number': '${snapshot.data!['totalPlaces']}',
+                      'label': languageProvider.currentLanguage == 'en'
+                          ? 'Tourist Places'
+                          : 'Meelaha Dalxiiska',
+                      'icon': Icons.place_rounded,
+                      'color': const Color(0xFF3B82F6),
+                    },
+                    {
+                      'number': '${snapshot.data!['categoriesCount']}',
+                      'label': languageProvider.currentLanguage == 'en'
+                          ? 'Categories'
+                          : 'Qaybaha',
+                      'icon': Icons.category_rounded,
+                      'color': const Color(0xFF10B981),
+                    },
+                    {
+                      'number': '2',
+                      'label': languageProvider.currentLanguage == 'en'
+                          ? 'Languages'
+                          : 'Luuqadaha',
+                      'icon': Icons.language_rounded,
+                      'color': const Color(0xFFEF4444),
+                    },
+                    {
+                      'number': '${snapshot.data!['favoritesCount']}',
+                      'label': languageProvider.currentLanguage == 'en'
+                          ? 'Favorites'
+                          : 'Jecelka',
+                      'icon': Icons.favorite_rounded,
+                      'color': const Color(0xFF8B5CF6),
+                    },
+                  ]
+                : [
+                    {
+                      'number': '...',
+                      'label': languageProvider.currentLanguage == 'en'
+                          ? 'Tourist Places'
+                          : 'Meelaha Dalxiiska',
+                      'icon': Icons.place_rounded,
+                      'color': const Color(0xFF3B82F6),
+                    },
+                    {
+                      'number': '...',
+                      'label': languageProvider.currentLanguage == 'en'
+                          ? 'Categories'
+                          : 'Qaybaha',
+                      'icon': Icons.category_rounded,
+                      'color': const Color(0xFF10B981),
+                    },
+                    {
+                      'number': '...',
+                      'label': languageProvider.currentLanguage == 'en'
+                          ? 'Languages'
+                          : 'Luuqadaha',
+                      'icon': Icons.language_rounded,
+                      'color': const Color(0xFFEF4444),
+                    },
+                    {
+                      'number': '24/7',
+                      'label': languageProvider.currentLanguage == 'en'
+                          ? 'Support'
+                          : 'Taageero',
+                      'icon': Icons.support_agent_rounded,
+                      'color': const Color(0xFF8B5CF6),
+                    },
+                  ];
 
-        return Container(
-          padding: EdgeInsets.all(isTablet ? 32 : 24),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                AppColors.primary.withOpacity(0.05),
-                AppColors.primary.withOpacity(0.02),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: AppColors.primary.withOpacity(0.1),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            children: [
-              Text(
-                languageProvider.currentLanguage == 'en' ? 'App Statistics' : 'Tirakoobka App-ka',
-                style: GoogleFonts.poppins(
-                  fontSize: isTablet ? 28 : 24,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF1F2937),
+            return Container(
+              padding: EdgeInsets.all(isTablet ? 32 : 24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primary.withOpacity(0.05),
+                    AppColors.primary.withOpacity(0.02),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.1),
+                  width: 1,
                 ),
               ),
-              const SizedBox(height: 24),
-              if (snapshot.connectionState == ConnectionState.waiting)
-                const Center(
-                  child: CircularProgressIndicator(),
-                )
-              else
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: isMobile ? 2 : 4,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: isMobile ? 1.2 : 1.0,
+              child: Column(
+                children: [
+                  Text(
+                    languageProvider.currentLanguage == 'en'
+                        ? 'App Statistics'
+                        : 'Tirakoobka App-ka',
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 28 : 24,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF1F2937),
+                    ),
                   ),
-                  itemCount: stats.length,
-                  itemBuilder: (context, index) {
-                    final stat = stats[index];
-                    return Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
+                  const SizedBox(height: 24),
+                  if (snapshot.connectionState == ConnectionState.waiting)
+                    const Center(
+                      child: CircularProgressIndicator(),
+                    )
+                  else
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: isMobile ? 2 : 4,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: isMobile ? 1.2 : 1.0,
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: (stat['color'] as Color).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Icon(
-                              stat['icon'] as IconData,
-                              color: stat['color'] as Color,
-                              size: 24,
-                            ),
+                      itemCount: stats.length,
+                      itemBuilder: (context, index) {
+                        final stat = stats[index];
+                        return Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            stat['number'] as String,
-                            style: GoogleFonts.poppins(
-                              fontSize: isTablet ? 28 : 24,
-                              fontWeight: FontWeight.bold,
-                              color: stat['color'] as Color,
-                            ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color:
+                                      (stat['color'] as Color).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Icon(
+                                  stat['icon'] as IconData,
+                                  color: stat['color'] as Color,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                stat['number'] as String,
+                                style: GoogleFonts.poppins(
+                                  fontSize: isTablet ? 28 : 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: stat['color'] as Color,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                stat['label'] as String,
+                                style: GoogleFonts.poppins(
+                                  fontSize: isTablet ? 14 : 12,
+                                  color: const Color(0xFF6B7280),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            stat['label'] as String,
-                            style: GoogleFonts.poppins(
-                              fontSize: isTablet ? 14 : 12,
-                              color: const Color(0xFF6B7280),
-                              fontWeight: FontWeight.w500,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-            ],
-           ),
-         );
-       },
-     );
-     },
-   );
+                        );
+                      },
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
-  Widget _buildUserActivitySection(LanguageProvider languageProvider, bool isTablet, bool isMobile) {
+  Widget _buildUserActivitySection(
+      LanguageProvider languageProvider, bool isTablet, bool isMobile) {
     return Consumer<UserBehaviorProvider>(
       builder: (context, userBehavior, child) {
-        final totalClicks = userBehavior.beachClicks + 
-                           userBehavior.historicalClicks + 
-                           userBehavior.culturalClicks + 
-                           userBehavior.religiousClicks;
-        
+        final totalClicks = userBehavior.beachClicks +
+            userBehavior.historicalClicks +
+            userBehavior.culturalClicks +
+            userBehavior.religiousClicks;
+
         if (totalClicks == 0) {
           return const SizedBox.shrink(); // Hide if no activity
         }
-        
+
         final activityStats = [
           {
             'number': '${userBehavior.beachClicks}',
-            'label': languageProvider.currentLanguage == 'en' ? 'Beach Visits' : 'Booqashada Xeebaha',
+            'label': languageProvider.currentLanguage == 'en'
+                ? 'Beach Visits'
+                : 'Booqashada Xeebaha',
             'icon': Icons.beach_access_rounded,
             'color': const Color(0xFF06B6D4),
           },
           {
             'number': '${userBehavior.historicalClicks}',
-            'label': languageProvider.currentLanguage == 'en' ? 'Historical Sites' : 'Meelaha Taariikhiga',
+            'label': languageProvider.currentLanguage == 'en'
+                ? 'Historical Sites'
+                : 'Meelaha Taariikhiga',
             'icon': Icons.account_balance_rounded,
             'color': const Color(0xFF8B5CF6),
           },
           {
             'number': '${userBehavior.culturalClicks}',
-            'label': languageProvider.currentLanguage == 'en' ? 'Cultural Places' : 'Meelaha Dhaqanka',
+            'label': languageProvider.currentLanguage == 'en'
+                ? 'Cultural Places'
+                : 'Meelaha Dhaqanka',
             'icon': Icons.museum_rounded,
             'color': const Color(0xFF10B981),
           },
           {
             'number': '${userBehavior.religiousClicks}',
-            'label': languageProvider.currentLanguage == 'en' ? 'Religious Sites' : 'Meelaha Diinta',
+            'label': languageProvider.currentLanguage == 'en'
+                ? 'Religious Sites'
+                : 'Meelaha Diinta',
             'icon': Icons.mosque_rounded,
             'color': const Color(0xFFEF4444),
           },
         ];
-        
+
         return Container(
           margin: const EdgeInsets.only(bottom: 32),
           padding: EdgeInsets.all(isTablet ? 32 : 24),
@@ -801,8 +845,8 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          languageProvider.currentLanguage == 'en' 
-                              ? 'Your Activity' 
+                          languageProvider.currentLanguage == 'en'
+                              ? 'Your Activity'
                               : 'Waxqabadkaaga',
                           style: GoogleFonts.poppins(
                             fontSize: isTablet ? 24 : 20,
@@ -897,7 +941,8 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildTeamSection(LanguageProvider languageProvider, bool isTablet, bool isMobile) {
+  Widget _buildTeamSection(
+      LanguageProvider languageProvider, bool isTablet, bool isMobile) {
     final teamMembers = [
       {
         'name': 'Hassan Mohamed Zubeyr',
@@ -1119,7 +1164,8 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildContactSection(LanguageProvider languageProvider, bool isTablet, bool isMobile) {
+  Widget _buildContactSection(
+      LanguageProvider languageProvider, bool isTablet, bool isMobile) {
     return Container(
       padding: EdgeInsets.all(isTablet ? 32 : 24),
       decoration: BoxDecoration(
@@ -1142,7 +1188,9 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 16),
           Text(
-            languageProvider.currentLanguage == 'en' ? 'Get in Touch' : 'Nala Soo Xiriir',
+            languageProvider.currentLanguage == 'en'
+                ? 'Get in Touch'
+                : 'Nala Soo Xiriir',
             style: GoogleFonts.poppins(
               fontSize: isTablet ? 28 : 24,
               fontWeight: FontWeight.bold,
@@ -1161,21 +1209,13 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildContactButton(
-                icon: Icons.email_rounded,
-                label: 'Email',
-                isTablet: isTablet,
-              ),
-              const SizedBox(width: 16),
-              _buildContactButton(
-                icon: Icons.phone_rounded,
-                label: 'Phone',
-                isTablet: isTablet,
-              ),
-            ],
+          Center(
+            child: _buildContactButton(
+              icon: Icons.phone_rounded,
+              label: 'WhatsApp',
+              isTablet: isTablet,
+              onTap: _launchWhatsApp,
+            ),
           ),
         ],
       ),
@@ -1186,39 +1226,66 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
     required IconData icon,
     required String label,
     required bool isTablet,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isTablet ? 24 : 20,
-        vertical: isTablet ? 16 : 12,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.3),
-          width: 1,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: isTablet ? 24 : 20,
+          vertical: isTablet ? 16 : 12,
         ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: Colors.white,
-            size: isTablet ? 24 : 20,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.3),
+            width: 1,
           ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: GoogleFonts.poppins(
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
               color: Colors.white,
-              fontSize: isTablet ? 16 : 14,
-              fontWeight: FontWeight.w600,
+              size: isTablet ? 24 : 20,
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: isTablet ? 16 : 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  // Launch WhatsApp with the specified number
+  void _launchWhatsApp() async {
+    const phoneNumber = '+252619071794';
+    const whatsappUrl = 'https://wa.me/$phoneNumber';
+
+    try {
+      if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
+        await launchUrl(Uri.parse(whatsappUrl),
+            mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback to phone dialer if WhatsApp is not available
+        const phoneUrl = 'tel:$phoneNumber';
+        if (await canLaunchUrl(Uri.parse(phoneUrl))) {
+          await launchUrl(Uri.parse(phoneUrl));
+        }
+      }
+    } catch (e) {
+      debugPrint('Error launching WhatsApp: $e');
+    }
+  }
+
+
 }
