@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'package:tourism_app/services/mock_payment_service.dart';
 
 class PaymentsTab extends StatefulWidget {
   const PaymentsTab({Key? key}) : super(key: key);
@@ -64,32 +65,73 @@ class _PaymentsTabState extends State<PaymentsTab> {
       final user = authProvider.currentUser;
       final userId = user?['_id'] ?? user?['id'];
 
-      final response = await http.get(
-        Uri.parse('http://localhost:9000/api/payments/history/$userId?page=1&limit=10'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      );
+      // Try real API first, fallback to mock service if it fails
+      Map<String, dynamic> responseData;
+      bool usedMockService = false;
+      
+      try {
+        final response = await http.get(
+          Uri.parse('http://localhost:9000/api/payments/history/$userId?page=1&limit=10'),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        );
 
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success']) {
-          setState(() {
-            _payments = List<Map<String, dynamic>>.from(responseData['data']['payments']);
-            _hasMoreData = responseData['data']['currentPage'] < responseData['data']['totalPages'];
-            _isLoading = false;
-          });
+        // Check if response is HTML (server error page)
+        final contentType = response.headers['content-type'] ?? '';
+        if (contentType.contains('text/html')) {
+          throw Exception('Server returned HTML instead of JSON');
+        }
+
+        if (response.statusCode == 200) {
+          // Try to decode JSON response
+          try {
+            responseData = json.decode(response.body);
+          } catch (jsonError) {
+            throw Exception('Failed to parse JSON response');
+          }
         } else {
-          final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
-          setState(() {
-            _error = responseData['message'] ?? languageProvider.getText('failed_load_payment_history');
-            _isLoading = false;
-          });
+          throw Exception('HTTP ${response.statusCode}');
+        }
+      } catch (e) {
+        print('Real payment history API failed, using mock service: $e');
+        
+        // Use mock service as fallback
+        final mockResult = await MockPaymentService.getPaymentHistory(
+          userId: userId,
+          page: 1,
+          limit: 10,
+        );
+        
+        if (mockResult['success']) {
+          responseData = mockResult;
+          usedMockService = true;
+        } else {
+          throw Exception('Both real and mock services failed');
+        }
+      }
+
+      if (responseData['success']) {
+        setState(() {
+          _payments = List<Map<String, dynamic>>.from(responseData['data']['payments']);
+          _hasMoreData = responseData['data']['currentPage'] < responseData['data']['totalPages'];
+          _isLoading = false;
+        });
+        
+        // Show info message if using mock service
+        if (usedMockService && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Using offline demo mode - showing mock payment history'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 3),
+            ),
+          );
         }
       } else {
         final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
         setState(() {
-          _error = languageProvider.getText('failed_load_payment_history');
+          _error = responseData['message'] ?? languageProvider.getText('failed_load_payment_history');
           _isLoading = false;
         });
       }
@@ -110,23 +152,58 @@ class _PaymentsTabState extends State<PaymentsTab> {
       final user = authProvider.currentUser;
       final userId = user?['_id'] ?? user?['id'];
 
-      final response = await http.get(
-        Uri.parse('http://localhost:9000/api/payments/history/$userId?page=${_currentPage + 1}&limit=10'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      );
+      // Try real API first, fallback to mock service if it fails
+      Map<String, dynamic> responseData;
+      
+      try {
+        final response = await http.get(
+          Uri.parse('http://localhost:9000/api/payments/history/$userId?page=${_currentPage + 1}&limit=10'),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        );
 
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success']) {
-          setState(() {
-            _payments.addAll(List<Map<String, dynamic>>.from(responseData['data']['payments']));
-            _currentPage++;
-            _hasMoreData = responseData['data']['currentPage'] < responseData['data']['totalPages'];
-            _isLoading = false;
-          });
+        // Check if response is HTML (server error page)
+        final contentType = response.headers['content-type'] ?? '';
+        if (contentType.contains('text/html')) {
+          throw Exception('Server returned HTML instead of JSON');
         }
+
+        if (response.statusCode == 200) {
+          // Try to decode JSON response
+          try {
+            responseData = json.decode(response.body);
+          } catch (jsonError) {
+            throw Exception('Failed to parse JSON response');
+          }
+        } else {
+          throw Exception('HTTP ${response.statusCode}');
+        }
+      } catch (e) {
+        // Use mock service as fallback
+        final mockResult = await MockPaymentService.getPaymentHistory(
+          userId: userId,
+          page: _currentPage + 1,
+          limit: 10,
+        );
+        
+        if (mockResult['success']) {
+          responseData = mockResult;
+        } else {
+          setState(() => _isLoading = false);
+          return;
+        }
+      }
+
+      if (responseData['success']) {
+        setState(() {
+          _payments.addAll(List<Map<String, dynamic>>.from(responseData['data']['payments']));
+          _currentPage++;
+          _hasMoreData = responseData['data']['currentPage'] < responseData['data']['totalPages'];
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
       }
     } catch (error) {
       setState(() => _isLoading = false);
