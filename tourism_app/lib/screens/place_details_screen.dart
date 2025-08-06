@@ -137,14 +137,17 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
 
     if (placeId.isNotEmpty) {
       try {
-        final success =
+        final newFavoriteState =
             await favoritesProvider.toggleFavorite(placeId, widget.place);
 
-        if (mounted && success) {
+        if (mounted) {
           setState(() {
-            _isFavorite = !_isFavorite;
+            _isFavorite = newFavoriteState;
             _isLoading = false;
           });
+
+          // Record user behavior for recommendation system
+          _userBehaviorProvider?.recordClick(widget.place['category']);
 
           // Show feedback
           ScaffoldMessenger.of(context).showSnackBar(
@@ -167,8 +170,6 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                   borderRadius: BorderRadius.circular(12)),
             ),
           );
-        } else if (mounted) {
-          setState(() => _isLoading = false);
         }
       } catch (e) {
         print('Error toggling favorite: $e');
@@ -258,11 +259,22 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                   child: ScaleTransition(
                     scale: _favoriteScaleAnimation,
                     child: IconButton(
-                      icon: Icon(
-                        _isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: _isFavorite ? Colors.red : Colors.grey[600],
-                      ),
-                      onPressed: _toggleFavorite,
+                      icon: _isLoading
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  _isFavorite ? Colors.red : Colors.grey[600]!,
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              _isFavorite ? Icons.favorite : Icons.favorite_border,
+                              color: _isFavorite ? Colors.red : Colors.grey[600],
+                            ),
+                      onPressed: _isLoading ? null : _toggleFavorite,
                     ),
                   ),
                 ),

@@ -12,6 +12,7 @@ import 'package:tourism_app/widgets/modern_place_card.dart';
 import 'package:tourism_app/screens/dashboard/see_all_recommended_screen.dart';
 import 'package:tourism_app/screens/dashboard/see_all_trending_screen.dart';
 import 'package:tourism_app/screens/dashboard/see_all_places_screen.dart';
+import 'package:tourism_app/screens/dashboard/see_all_categories_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
@@ -270,16 +271,19 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
               ),
             ),
 
-            // Recommended Section
-            if (_recommendedPlaces.isNotEmpty)
+            // Recommended Section (only show when no search and category is 'all')
+            if (_recommendedPlaces.isNotEmpty && 
+                _searchController.text.isEmpty && 
+                _selectedCategory == 'all')
               _buildRecommendedSection(
                 Provider.of<LanguageProvider>(context, listen: false),
               ),
 
-            // Trending Section
-            _buildTrendingSection(
-              Provider.of<LanguageProvider>(context, listen: false),
-            ),
+            // Trending Section (only show when no search and category is 'all')
+            if (_searchController.text.isEmpty && _selectedCategory == 'all')
+              _buildTrendingSection(
+                Provider.of<LanguageProvider>(context, listen: false),
+              ),
 
             // Search Results Counter
             if (_searchController.text.isNotEmpty || _selectedCategory != 'all')
@@ -779,7 +783,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   }
 
   Widget _buildEnhancedCategoryChips(LanguageProvider languageProvider) {
-    final categories = [
+    final allCategories = [
       {'key': 'all', 'icon': Icons.public},
       {'key': 'beach', 'icon': Icons.beach_access},
       {'key': 'historical', 'icon': Icons.account_balance},
@@ -789,23 +793,80 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       {'key': 'urban park', 'icon': Icons.park},
     ];
 
+    // Show only first 3 categories plus 'See All' button
+    final displayCategories = allCategories.take(3).toList();
+
     return Container(
       height: 75,
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        itemBuilder: (context, index) {
-          final category = categories[index];
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: _buildEnhancedCategoryChip(
-              category['key'] as String,
-              languageProvider,
-              category['icon'] as IconData,
+      child: Row(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: displayCategories.length,
+              itemBuilder: (context, index) {
+                final category = displayCategories[index];
+                return Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: _buildEnhancedCategoryChip(
+                    category['key'] as String,
+                    languageProvider,
+                    category['icon'] as IconData,
+                  ),
+                );
+              },
             ),
-          );
-        },
+          ),
+          // See All Categories Button
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SeeAllCategoriesScreen(),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.3),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.grid_view,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    languageProvider.getText('see_all'),
+                    style: GoogleFonts.poppins(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
