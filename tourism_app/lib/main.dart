@@ -10,6 +10,7 @@ import 'package:tourism_app/screens/dashboard/dashboard_screen.dart';
 import 'package:tourism_app/screens/splash_screen.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:tourism_app/providers/user_behavior_provider.dart';
+import 'package:tourism_app/services/smart_chat_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -28,6 +29,10 @@ void main() async {
     }
   }
   // For web platform, sqflite will use IndexedDB automatically
+
+  // Initialize SmartChatService with Gemini AI
+  SmartChatService.initialize();
+  print('🤖 SmartChatService initialized');
 
   print('🚀 Starting app...');
   runApp(const MyApp());

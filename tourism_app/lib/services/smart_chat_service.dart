@@ -1,112 +1,59 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:tourism_app/services/database_adapter.dart';
 import 'package:tourism_app/services/places_service.dart';
 import 'package:tourism_app/services/favorites_service.dart';
 import 'package:tourism_app/providers/auth_provider.dart';
 
 class SmartChatService {
-  static const String _baseUrl = 'http://localhost:5000';
-  static const String _fallbackUrl = 'http://10.0.2.2:5000';
-  static const String _networkUrl = 'http://10.1.1.33:5000';
-  
   static final DatabaseAdapter _dbHelper = DatabaseAdapter.instance;
-  
+  static GenerativeModel? _model;
+  static String? _apiKey;
+
+  // Default API key - replace with your actual Gemini API key
+  static const String _defaultApiKey = 'AIzaSyBkmPBOnU2uOmuu0Fotj9QXcEKP2vo-GzI';
+
   // API configuration status
-  static Map<String, bool> _apiStatus = {
+  static final Map<String, bool> _apiStatus = {
     'gemini': false,
-    'openai': false,
-    'claude': false,
-    'backend_available': false,
   };
 
-  // Configure API key for external AI services
-  static Future<bool> configureApiKey({
-    String? geminiKey,
-    String? openaiKey,
-    String? claudeKey,
-  }) async {
+  // Initialize with default API key
+  static void initialize() {
+    configureGeminiKey(_defaultApiKey);
+  }
+
+  // Configure Gemini API key
+  static bool configureGeminiKey(String geminiKey) {
     try {
-      final payload = <String, String>{};
-      
-      if (geminiKey != null && geminiKey.isNotEmpty) {
-        payload['gemini_api_key'] = geminiKey;
-      }
-      if (openaiKey != null && openaiKey.isNotEmpty) {
-        payload['openai_api_key'] = openaiKey;
-      }
-      if (claudeKey != null && claudeKey.isNotEmpty) {
-        payload['claude_api_key'] = claudeKey;
-      }
-      
-      if (payload.isEmpty) {
+      if (geminiKey.isEmpty) {
         return false;
       }
-      
-      final urls = [_baseUrl, _fallbackUrl, _networkUrl];
-      
-      for (String url in urls) {
-        try {
-          final response = await http.post(
-            Uri.parse('$url/set-api-key'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(payload),
-          ).timeout(const Duration(seconds: 10));
 
-          if (response.statusCode == 200) {
-            final data = jsonDecode(response.body);
-            if (data['success'] == true) {
-              // Update API status
-              if (geminiKey != null) _apiStatus['gemini'] = true;
-              if (openaiKey != null) _apiStatus['openai'] = true;
-              if (claudeKey != null) _apiStatus['claude'] = true;
-              _apiStatus['backend_available'] = true;
-              return true;
-            }
-          }
-        } catch (e) {
-          continue;
-        }
-      }
-      
-      return false;
+      _apiKey = geminiKey;
+      _model = GenerativeModel(
+        model: 'gemini-1.5-flash',
+        apiKey: geminiKey,
+        generationConfig: GenerationConfig(
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 1024,
+        ),
+      );
+
+      _apiStatus['gemini'] = true;
+      print('✅ Gemini AI configured successfully');
+      return true;
     } catch (e) {
+      print('❌ Error configuring Gemini: $e');
+      _apiStatus['gemini'] = false;
       return false;
     }
   }
 
   // Check API status
-  static Future<Map<String, bool>> checkApiStatus() async {
-    try {
-      final urls = [_baseUrl, _fallbackUrl, _networkUrl];
-      
-      for (String url in urls) {
-        try {
-          final response = await http.get(
-            Uri.parse('$url/health'),
-          ).timeout(const Duration(seconds: 5));
-
-          if (response.statusCode == 200) {
-            final data = jsonDecode(response.body);
-            if (data['api_keys_configured'] != null) {
-              _apiStatus['gemini'] = data['api_keys_configured']['gemini'] ?? false;
-              _apiStatus['openai'] = data['api_keys_configured']['openai'] ?? false;
-              _apiStatus['claude'] = data['api_keys_configured']['claude'] ?? false;
-              _apiStatus['backend_available'] = true;
-              return _apiStatus;
-            }
-          }
-        } catch (e) {
-          continue;
-        }
-      }
-      
-      _apiStatus['backend_available'] = false;
-      return _apiStatus;
-    } catch (e) {
-      _apiStatus['backend_available'] = false;
-      return _apiStatus;
-    }
+  static Map<String, bool> checkApiStatus() {
+    return Map.from(_apiStatus);
   }
 
   // Get current API status
@@ -114,136 +61,138 @@ class SmartChatService {
     return Map.from(_apiStatus);
   }
 
-  // Optimized message sending with faster response
+  // Send message to Gemini AI with full context
   static Future<String> sendSmartMessage(
-    String message, 
-    String language, 
-    AuthProvider authProvider
-  ) async {
+      String message, String language, AuthProvider authProvider) async {
     try {
-      // Quick context gathering - get all data for accurate counts
-      final userContext = await _getUserContext(authProvider);
-      final placesContext = await _getPlacesContext(); // Get all places
-      final favoritesContext = await _getFavoritesContext(authProvider); // Get all favorites
-      
-      // Optimized payload - complete but efficient
-      final payload = {
-        'message': message,
-        'language': language,
-        'user_context': userContext,
-        'places_data': placesContext,
-        'favorites_data': favoritesContext,
-      };
-
-      // Try backend with optimized timeout for speed
-      final urls = [_baseUrl, _fallbackUrl, _networkUrl];
-      
-      for (String url in urls) {
-        try {
-          final response = await http.post(
-            Uri.parse('$url/smart-chat'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(payload),
-          ).timeout(const Duration(seconds: 5)); // Faster timeout
-
-          if (response.statusCode == 200) {
-            final data = jsonDecode(response.body);
-            return data['response'] ?? 'Sorry, I couldn\'t process that request.';
-          }
-        } catch (e) {
-          continue;
-        }
+      if (_model == null || _apiKey == null) {
+        return _getServiceUnavailableMessage(language);
       }
+
+      // Get complete context data
+      final userContext = await _getUserContext(authProvider);
+      final placesContext = await _getPlacesContext();
+      final favoritesContext = await _getFavoritesContext(authProvider);
+
+      // Build comprehensive context prompt
+      final contextPrompt = _buildContextPrompt(
+        message, language, userContext, placesContext, favoritesContext);
+
+      print('🤖 Sending message to Gemini AI...');
       
-      // Fast fallback response
-      return _getFastOfflineResponse(message, language, userContext, placesContext);
+      // Send to Gemini AI
+      final content = [Content.text(contextPrompt)];
+      final response = await _model!.generateContent(content);
       
+      final aiResponse = response.text;
+      if (aiResponse != null && aiResponse.isNotEmpty) {
+        print('✅ Received response from Gemini AI');
+        return aiResponse;
+      } else {
+        print('❌ Empty response from Gemini AI');
+        return _getServiceUnavailableMessage(language);
+      }
     } catch (e) {
-      return _getFastOfflineResponse(message, language, {}, []);
+      print('❌ Error communicating with Gemini AI: $e');
+      return _getServiceUnavailableMessage(language);
     }
   }
 
-  // Fast offline response for quick fallback
-  static String _getFastOfflineResponse(
+  // Build context prompt for Gemini AI
+  static String _buildContextPrompt(
     String message,
     String language,
     Map<String, dynamic> userContext,
     List<Map<String, dynamic>> placesContext,
+    List<Map<String, dynamic>> favoritesContext,
   ) {
-    final messageLower = message.toLowerCase();
-    final userName = userContext['full_name'] ?? userContext['username'] ?? (language == 'so' ? 'Saaxiib' : 'Friend');
+    final userName = userContext['full_name'] ?? userContext['username'] ?? 
+                    (language == 'so' ? 'Saaxiib' : 'Friend');
     
-    // Quick greeting response
-    if (_isGreeting(messageLower)) {
-      return language == 'so'
-          ? '🌟 Salaam $userName! Sidee kuu caawin karaa dalxiiska Soomaaliya?'
-          : '🌟 Hello $userName! How can I help you with Somalia tourism?';
-    }
+    final prompt = '''
+You are a smart tourism assistant for Somalia. Your name is "Somalia Tourism AI Assistant".
 
-    // Quick list all places response
-    if (_isListAllQuery(messageLower)) {
-      final placesCount = placesContext.length;
-      return language == 'so'
-          ? '📍 $userName, waxaan haynaa $placesCount meel oo dalxiis ah. Halkan waa kuwa ugu muhiimsan...'
-          : '📍 $userName, we have $placesCount tourism places. Here are the highlights...';
-    }
+User Information:
+- Name: $userName
+- Language: ${language == 'so' ? 'Somali' : 'English'}
+- Logged in: ${userContext['is_logged_in'] ?? false}
 
-    // Quick free places response
-    if (_isFreeQuery(messageLower)) {
-      final freePlaces = placesContext.where((place) => (place['price_per_person'] ?? 0) == 0).length;
-      return language == 'so'
-          ? '🆓 $userName, waxaan haynaa $freePlaces meel oo bilaash ah!'
-          : '🆓 $userName, we have $freePlaces free places available!';
-    }
+Available Places (${placesContext.length} total):
+${_formatPlacesData(placesContext)}
 
-    // Quick cost response
-    if (_isCostQuery(messageLower)) {
-      final freePlaces = placesContext.where((place) => (place['price_per_person'] ?? 0) == 0).length;
-      return language == 'so'
-          ? '💰 $userName, qiimaha guud: Xeebaha \$3-12, Taariikhiga \$5-25. Waxaa jira $freePlaces meel oo bilaash ah!'
-          : '💰 $userName, general costs: Beaches \$3-12, Historical \$5-25. We have $freePlaces free places!';
-    }
+User's Favorites (${favoritesContext.length} total):
+${_formatFavoritesData(favoritesContext)}
 
-    // Quick place recommendation
-    if (_isPlaceQuery(messageLower)) {
-      return language == 'so'
-          ? '🏖️ $userName, waxaan kugula talinayaa Lido Beach, Laas Geel, iyo Zeila.'
-          : '🏖️ $userName, I recommend Lido Beach, Laas Geel, and Zeila.';
-    }
+Instructions:
+1. Always respond in ${language == 'so' ? 'Somali' : 'English'} language
+2. Be helpful, friendly, and knowledgeable about Somalia tourism
+3. Use the provided data to give accurate information about places, prices, and recommendations
+4. Include relevant emojis to make responses engaging
+5. Address the user by their name when appropriate
+6. Provide specific details from the places data when recommending locations
+7. Consider the user's favorites when making recommendations
+8. Be concise but informative
 
-    // Default quick response
-     return language == 'so'
-         ? '🤖 $userName, wax ka weydiiso dalxiiska Soomaaliya!'
-         : '🤖 $userName, ask me about Somalia tourism!';
-   }
-   
-   // Helper methods for enhanced intent detection
-   static bool _isGreeting(String message) {
-     return ['hello', 'hi', 'salaam', 'hey', 'good morning'].any((greeting) => message.contains(greeting));
-   }
-   
-   static bool _isCostQuery(String message) {
-     return ['cost', 'price', 'expensive', 'cheap', 'budget', 'money', 'free', 'zero'].any((word) => message.contains(word));
-   }
-   
-   static bool _isListAllQuery(String message) {
-     return ['list all', 'show all', 'all places', 'every place', 'complete list', 'full list', 'everything available'].any((phrase) => message.contains(phrase));
-   }
-   
-   static bool _isFreeQuery(String message) {
-     return ['free', 'no cost', 'zero cost', 'without charge', 'complimentary', 'free places'].any((phrase) => message.contains(phrase));
-   }
-   
-   static bool _isPlaceQuery(String message) {
-     return ['place', 'recommend', 'suggest', 'visit', 'where', 'best'].any((word) => message.contains(word));
-   }
+User's Question: $message
+
+Please provide a helpful response based on the context above.''';
+
+    return prompt;
+  }
+
+  // Format places data for context
+  static String _formatPlacesData(List<Map<String, dynamic>> places) {
+    if (places.isEmpty) return 'No places available';
+    
+    final buffer = StringBuffer();
+    for (int i = 0; i < places.length && i < 20; i++) { // Limit to first 20 places
+      final place = places[i];
+      buffer.writeln('- ${place['name_eng']} (${place['name_som']})');
+      buffer.writeln('  Category: ${place['category']}');
+      buffer.writeln('  Location: ${place['location']}');
+      buffer.writeln('  Price: \$${place['pricePerPerson'] ?? place['price_per_person'] ?? 'Free'}');
+      if (place['desc_eng'] != null) {
+        final desc = place['desc_eng'].toString();
+        buffer.writeln('  Description: ${desc.length > 100 ? desc.substring(0, 100) + '...' : desc}');
+      }
+      buffer.writeln('');
+    }
+    
+    if (places.length > 20) {
+      buffer.writeln('... and ${places.length - 20} more places');
+    }
+    
+    return buffer.toString();
+  }
+
+  // Format favorites data for context
+  static String _formatFavoritesData(List<Map<String, dynamic>> favorites) {
+    if (favorites.isEmpty) return 'No favorites yet';
+    
+    final buffer = StringBuffer();
+    for (final favorite in favorites) {
+      buffer.writeln('- ${favorite['name_eng']} (${favorite['category']})');
+    }
+    
+    return buffer.toString();
+  }
+
+  // Service unavailable message
+  static String _getServiceUnavailableMessage(String language) {
+    return language == 'so'
+        ? '⚠️ Waan ka xumahay, adeegga AI-ga hadda lama heli karo. Fadlan API key-ga Gemini hubi ama mar kale isku day.'
+        : '⚠️ Sorry, the AI service is currently unavailable. Please check your Gemini API key or try again later.';
+  }
+
+
 
   // Get user context for personalization
-  static Future<Map<String, dynamic>> _getUserContext(AuthProvider authProvider) async {
+  static Future<Map<String, dynamic>> _getUserContext(
+      AuthProvider authProvider) async {
     try {
       final user = authProvider.currentUser;
       if (user == null) return {};
-      
+
       return {
         'id': user['id'] ?? user['_id'],
         'username': user['username'] ?? 'User',
@@ -256,63 +205,49 @@ class SmartChatService {
     }
   }
 
-  // Get optimized places context - using same source as home tab
+  // Get complete places context with full JSON from backend
   static Future<List<Map<String, dynamic>>> _getPlacesContext() async {
     try {
-      // Use PlacesService to get the same data as home tab
+      // Get the complete JSON data from backend API
       final places = await PlacesService.getAllPlaces();
       print('🔍 AI Support: Found ${places.length} places from backend API');
-      
-      return places.map((place) => {
-        'id': place['id'] ?? place['_id'],
-        'name_eng': place['name_eng'],
-        'name_som': place['name_som'],
-        'category': place['category'],
-        'location': place['location'],
-        'price_per_person': place['pricePerPerson'] ?? place['price_per_person'] ?? 5.0,
-        'description_eng': place['desc_eng'],
-        'description_som': place['desc_som'],
-        'image_url': place['image_url'],
-        'image_data': place['image_data'],
-      }).toList();
+
+      // Return the complete JSON data without filtering
+      return places;
     } catch (e) {
       print('❌ AI Support: Error fetching places from backend: $e');
       // Fallback to local database if backend fails
       try {
         if (_dbHelper.supportsPlaces) {
           final places = await _dbHelper.getAllPlaces();
-          print('🔄 AI Support: Fallback to local database, found ${places.length} places');
-          return places.map((place) => {
-            'id': place['id'] ?? place['_id'],
-            'name_eng': place['name_eng'],
-            'name_som': place['name_som'],
-            'category': place['category'],
-            'location': place['location'],
-            'price_per_person': place['pricePerPerson'] ?? place['price_per_person'] ?? 5.0,
-            'description_eng': place['desc_eng'],
-            'description_som': place['desc_som'],
-          }).toList();
+          print(
+              '🔄 AI Support: Fallback to local database, found ${places.length} places');
+          return places;
         }
       } catch (fallbackError) {
-        print('❌ AI Support: Fallback to local database also failed: $fallbackError');
+        print(
+            '❌ AI Support: Fallback to local database also failed: $fallbackError');
       }
       return [];
     }
   }
 
-  // Get optimized user favorites context - using same source as home tab
-  static Future<List<Map<String, dynamic>>> _getFavoritesContext(AuthProvider authProvider) async {
+  // Get complete user favorites context with full JSON from backend
+  static Future<List<Map<String, dynamic>>> _getFavoritesContext(
+      AuthProvider authProvider) async {
     try {
       final user = authProvider.currentUser;
       if (user == null) {
         print('🔍 AI Support: No user logged in, skipping favorites');
         return [];
       }
-      
-      // Use FavoritesService to get the same data as home tab
+
+      // Get the complete JSON data from backend API
       final favorites = await FavoritesService.getFavorites();
-      print('🔍 AI Support: Found ${favorites.length} favorites from backend API');
-      
+      print(
+          '🔍 AI Support: Found ${favorites.length} favorites from backend API');
+
+      // Return the complete JSON data without filtering
       return favorites;
     } catch (e) {
       print('❌ AI Support: Error fetching favorites from backend: $e');
@@ -323,17 +258,16 @@ class SmartChatService {
           if (user != null) {
             final userId = user['id'] ?? user['_id'];
             final favorites = await _dbHelper.getFavoritePlaces(userId);
-            print('🔄 AI Support: Fallback to local database, found ${favorites.length} favorites');
+            print(
+                '🔄 AI Support: Fallback to local database, found ${favorites.length} favorites');
             return favorites;
           }
         }
       } catch (fallbackError) {
-        print('❌ AI Support: Fallback to local database also failed: $fallbackError');
+        print(
+            '❌ AI Support: Fallback to local database also failed: $fallbackError');
       }
       return [];
     }
   }
-
-  // Enhanced offline response with context awareness
-
 }
