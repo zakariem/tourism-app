@@ -567,7 +567,7 @@ class _SupportTabState extends State<SupportTab> with TickerProviderStateMixin {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  SelectableText(
                     message.message,
                     style: TextStyle(
                       color: isUser ? Colors.white : Colors.black87,

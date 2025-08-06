@@ -69,16 +69,31 @@ class SmartChatService {
         return _getServiceUnavailableMessage(language);
       }
 
+      // Check for user frustration first
+      final isFrustrated = _detectFrustration(message);
+      
+      // If user is frustrated, provide support contact information
+      if (isFrustrated) {
+        return _getFrustrationSupportMessage(language);
+      }
+      
+      // Detect the actual language of the user's message
+      final detectedLanguage = _detectMessageLanguage(message);
+      
+      // Use detected language if it differs from app language
+      final responseLanguage = detectedLanguage ?? language;
+
       // Get complete context data
       final userContext = await _getUserContext(authProvider);
       final placesContext = await _getPlacesContext();
       final favoritesContext = await _getFavoritesContext(authProvider);
 
-      // Build comprehensive context prompt
+      // Build comprehensive context prompt with detected language
       final contextPrompt = _buildContextPrompt(
-        message, language, userContext, placesContext, favoritesContext);
+        message, responseLanguage, userContext, placesContext, favoritesContext);
 
       print('🤖 Sending message to Gemini AI...');
+      print('🔍 Detected language: $detectedLanguage, App language: $language, Response language: $responseLanguage');
       
       // Send to Gemini AI
       final content = [Content.text(contextPrompt)];
@@ -90,12 +105,126 @@ class SmartChatService {
         return aiResponse;
       } else {
         print('❌ Empty response from Gemini AI');
-        return _getServiceUnavailableMessage(language);
+        return _getServiceUnavailableMessage(responseLanguage);
       }
     } catch (e) {
       print('❌ Error communicating with Gemini AI: $e');
       return _getServiceUnavailableMessage(language);
     }
+  }
+
+  // Detect frustration in user message
+  static bool _detectFrustration(String message) {
+    final lowerMessage = message.toLowerCase();
+    
+    // English frustration indicators
+    final englishFrustrationWords = [
+      'frustrated', 'angry', 'annoyed', 'upset', 'mad', 'furious', 'irritated',
+      'stupid', 'useless', 'terrible', 'awful', 'horrible', 'worst', 'hate',
+      'sucks', 'damn', 'shit', 'fuck', 'wtf', 'omg', 'seriously', 'ridiculous',
+      'pathetic', 'garbage', 'trash', 'broken', 'doesn\'t work', 'not working',
+      'help me', 'i need help', 'this is not working', 'nothing works',
+      'give up', 'fed up', 'can\'t take', 'enough', 'tired of'
+    ];
+    
+    // Somali frustration indicators
+    final somaliFrustrationWords = [
+      'cadhaysan', 'xanaaq', 'xumaan', 'nacayb', 'xun', 'dhibaato',
+      'mashquul', 'daal', 'daalan', 'ka daalay', 'waan ka daalay',
+      'ma shaqeynayo', 'khalad', 'qalad', 'xun', 'aan shaqeyn',
+      'i caawiyo', 'caawimaad', 'waan u baahanahay', 'ma fahmin'
+    ];
+    
+    // Check for frustration words
+    for (final word in englishFrustrationWords) {
+      if (lowerMessage.contains(word)) {
+        return true;
+      }
+    }
+    
+    for (final word in somaliFrustrationWords) {
+      if (lowerMessage.contains(word)) {
+        return true;
+      }
+    }
+    
+    // Check for excessive punctuation (signs of frustration)
+    if (RegExp(r'[!]{2,}').hasMatch(message) || 
+        RegExp(r'[?]{2,}').hasMatch(message) ||
+        message.toUpperCase() == message && message.length > 10) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  // Detect the language of the user's message
+  static String? _detectMessageLanguage(String message) {
+    // Convert message to lowercase for better detection
+    final lowerMessage = message.toLowerCase();
+    
+    // Common Somali words and patterns
+    final somaliIndicators = [
+      // Common Somali words
+      'waa', 'baa', 'ayaa', 'oo', 'iyo', 'ama', 'laakiin', 'haddii', 'markii',
+      'waxa', 'waxaa', 'maxaa', 'xaggee', 'goorma', 'sidee', 'yaa', 'kumee',
+      'halka', 'meesha', 'goobta', 'magaalada', 'dalka', 'somalia', 'soomaaliya',
+      'fadlan', 'mahadsanid', 'waan', 'kuma', 'maya', 'haa', 'saaxiib',
+      // Tourism related Somali words
+      'dalxiis', 'booqasho', 'meel', 'goob', 'magaalo', 'badda', 'buur',
+      'taariikh', 'dhaqan', 'cunto', 'hotel', 'guri', 'safar', 'socod'
+    ];
+    
+    // Common English words and patterns
+    final englishIndicators = [
+      'the', 'and', 'or', 'but', 'if', 'when', 'where', 'what', 'how', 'who',
+      'can', 'could', 'would', 'should', 'will', 'have', 'has', 'had',
+      'is', 'are', 'was', 'were', 'be', 'been', 'being',
+      'place', 'places', 'visit', 'tourism', 'travel', 'hotel', 'restaurant',
+      'beach', 'mountain', 'city', 'country', 'somalia', 'somali'
+    ];
+    
+    int somaliScore = 0;
+    int englishScore = 0;
+    
+    // Count Somali indicators
+    for (final indicator in somaliIndicators) {
+      if (lowerMessage.contains(indicator)) {
+        somaliScore++;
+      }
+    }
+    
+    // Count English indicators
+    for (final indicator in englishIndicators) {
+      if (lowerMessage.contains(indicator)) {
+        englishScore++;
+      }
+    }
+    
+    // Additional pattern checks
+    // Somali often has double vowels and specific letter combinations
+    if (RegExp(r'[aeiou]{2,}').hasMatch(lowerMessage) || 
+        lowerMessage.contains('dh') || lowerMessage.contains('kh') || 
+        lowerMessage.contains('sh') || lowerMessage.contains('ch')) {
+      somaliScore++;
+    }
+    
+    // English pattern checks
+    if (RegExp(r'\b(a|an|the)\b').hasMatch(lowerMessage) ||
+        RegExp(r'ing\b').hasMatch(lowerMessage) ||
+        RegExp(r'ed\b').hasMatch(lowerMessage)) {
+      englishScore++;
+    }
+    
+    // Return detected language if there's a clear winner
+    if (somaliScore > englishScore && somaliScore > 0) {
+      return 'so';
+    } else if (englishScore > somaliScore && englishScore > 0) {
+      return 'en';
+    }
+    
+    // If no clear detection, return null to use app language
+    return null;
   }
 
   // Build context prompt for Gemini AI
@@ -124,14 +253,15 @@ User's Favorites (${favoritesContext.length} total):
 ${_formatFavoritesData(favoritesContext)}
 
 Instructions:
-1. Always respond in ${language == 'so' ? 'Somali' : 'English'} language
-2. Be helpful, friendly, and knowledgeable about Somalia tourism
-3. Use the provided data to give accurate information about places, prices, and recommendations
-4. Include relevant emojis to make responses engaging
-5. Address the user by their name when appropriate
-6. Provide specific details from the places data when recommending locations
-7. Consider the user's favorites when making recommendations
-8. Be concise but informative
+1. IMPORTANT: Always respond in ${language == 'so' ? 'Somali' : 'English'} language, regardless of the app's language setting
+2. The user asked their question in ${language == 'so' ? 'Somali' : 'English'}, so respond in the same language
+3. Be helpful, friendly, and knowledgeable about Somalia tourism
+4. Use the provided data to give accurate information about places, prices, and recommendations
+5. Include relevant emojis to make responses engaging
+6. Address the user by their name when appropriate
+7. Provide specific details from the places data when recommending locations
+8. Consider the user's favorites when making recommendations
+9. Be concise but informative
 
 User's Question: $message
 
@@ -175,6 +305,23 @@ Please provide a helpful response based on the context above.''';
     }
     
     return buffer.toString();
+  }
+
+  // Frustration support message with contact information
+  static String _getFrustrationSupportMessage(String language) {
+    return language == 'so'
+        ? '😔 Waan ogahay inaad dhibaato la kulantay. Waan ka xumahay!\n\n'
+          '📞 Haddii aad u baahan tahay caawimaad degdeg ah, fadlan wac lambarkaan:\n'
+          '**619071794**\n\n'
+          '🕐 Wakhtiga adeegga: 8:00 subaxnimo - 8:00 fiidnimo\n'
+          '💬 Ama sii wad wadahadalka halkan, waan kaa caawin doonaa si fiican!\n\n'
+          'Maxaan kuu samayn karaa si aan kaa caawiyo?'
+        : '😔 I understand you\'re experiencing some frustration. I\'m sorry about that!\n\n'
+          '📞 If you need immediate assistance, please call this number:\n'
+          '**619071794**\n\n'
+          '🕐 Service hours: 8:00 AM - 8:00 PM\n'
+          '💬 Or continue chatting here, I\'m here to help you better!\n\n'
+          'What can I do to assist you properly?';
   }
 
   // Service unavailable message
