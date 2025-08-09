@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
 import 'package:tourism_app/providers/user_behavior_provider.dart';
+import 'package:tourism_app/providers/enhanced_user_behavior_provider.dart';
 import 'package:tourism_app/providers/favorites_provider.dart';
 import 'package:tourism_app/services/places_service.dart';
-import 'package:tourism_app/services/recommendation_service.dart';
+import 'package:tourism_app/services/enhanced_recommendation_service.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:tourism_app/widgets/modern_place_card.dart';
 
@@ -35,8 +36,14 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   bool _isLoading = true;
   String? _recommendedCategory;
   List<Map<String, dynamic>> _recommendedPlaces = [];
+  final List<Map<String, dynamic>> _trendingPlaces = [];
+  List<Map<String, dynamic>> _enhancedRecommendations = [];
+  List<Map<String, dynamic>> _enhancedTrendingPlaces = [];
   bool _isRecommending = false;
+  bool _isLoadingEnhancedContent = true;
+  final bool _useEnhancedRecommendations = true;
   double _scrollOffset = 0.0;
+  late EnhancedRecommendationService _enhancedRecommendationService;
 
   late AnimationController _heroAnimationController;
   late Animation<double> _heroParallaxAnimation;
@@ -48,6 +55,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     _loadPlaces();
     _loadLastRecommendation();
     _maybeRecommend();
+    _initializeEnhancedRecommendations();
     _setupAnimations();
     _setupScrollListener();
     _loadFavorites();
@@ -57,6 +65,55 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     final favoritesProvider =
         Provider.of<FavoritesProvider>(context, listen: false);
     await favoritesProvider.loadFavorites();
+  }
+
+  Future<void> _initializeEnhancedRecommendations() async {
+    try {
+      final enhancedBehaviorProvider =
+          Provider.of<EnhancedUserBehaviorProvider>(context, listen: false);
+      
+      // Set up a listener to update UI when cached data is loaded
+      void updateFromProvider() async {
+        if (mounted) {
+          final recommendations = await enhancedBehaviorProvider.getRecommendations();
+          final trendingPlaces = await enhancedBehaviorProvider.getTrendingPlaces();
+          
+          setState(() {
+            _enhancedRecommendations = recommendations;
+            _enhancedTrendingPlaces = trendingPlaces;
+            _isLoadingEnhancedContent = false;
+          });
+        }
+      }
+      
+      // Add listener for immediate updates when cached data is available
+      enhancedBehaviorProvider.addListener(updateFromProvider);
+      
+      // Initialize the provider (this will load cached data first, then fresh data)
+      await enhancedBehaviorProvider.initialize();
+
+      // Load current recommendations and trending
+      final recommendations = await enhancedBehaviorProvider.getRecommendations();
+      final trendingPlaces = await enhancedBehaviorProvider.getTrendingPlaces();
+
+      if (mounted) {
+        setState(() {
+          _enhancedRecommendations = recommendations;
+          _enhancedTrendingPlaces = trendingPlaces;
+          _isLoadingEnhancedContent = false;
+        });
+      }
+      
+      // Remove the temporary listener
+      enhancedBehaviorProvider.removeListener(updateFromProvider);
+    } catch (e) {
+      print('❌ Error initializing enhanced recommendations: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingEnhancedContent = false;
+        });
+      }
+    }
   }
 
   void _setupAnimations() {
@@ -122,7 +179,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     if (lastCategory != null) {
       try {
         final places = await PlacesService.getPlacesByCategory(lastCategory);
-        
+
         setState(() {
           _recommendedCategory = lastCategory;
           _recommendedPlaces = places;
@@ -139,34 +196,72 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     setState(() => _isRecommending = true);
 
     try {
-      final behavior =
-          Provider.of<UserBehaviorProvider>(context, listen: false);
-      final recommendedCategory = await RecommendationService()
-          .getRecommendedCategory(behavior.featureVector);
+      // Initialize enhanced recommendation service
+      _enhancedRecommendationService = EnhancedRecommendationService();
+      await _enhancedRecommendationService.initialize();
 
-      if (recommendedCategory != null &&
-          recommendedCategory != _recommendedCategory &&
-          mounted) {
-        final places =
-            await PlacesService.getPlacesByCategory(recommendedCategory);
+      // Get dynamic recommendations based on user behavior
+      final recommendations = await _enhancedRecommendationService
+          .getDynamicRecommendations(limit: 10);
 
-        if (mounted) {
+      if (recommendations.isNotEmpty && mounted) {
+        // Get the top category from recommendations
+        final topRecommendation = recommendations.first;
+        final topCategory =
+            topRecommendation['category']?.toString().toLowerCase();
+
+        if (topCategory != null && topCategory != _recommendedCategory) {
           setState(() {
-            _recommendedCategory = recommendedCategory;
-            _recommendedPlaces = places;
+            _recommendedCategory = topCategory;
+            _recommendedPlaces = recommendations.take(5).toList();
           });
 
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(
-              'last_recommended_category', recommendedCategory);
+          await prefs.setString('last_recommended_category', topCategory);
+
+          print(
+              '✅ Dynamic recommendations updated: $topCategory with ${recommendations.length} places');
         }
       }
     } catch (e) {
-      print('❌ Error getting recommendations: $e');
+      print('❌ Error getting enhanced recommendations: $e');
+      // Fallback to basic recommendation if enhanced fails
+      await _fallbackToBasicRecommendation();
     } finally {
       if (mounted) {
         setState(() => _isRecommending = false);
       }
+    }
+  }
+
+  Future<void> _fallbackToBasicRecommendation() async {
+    try {
+      final behavior =
+          Provider.of<UserBehaviorProvider>(context, listen: false);
+
+      // Simple fallback logic based on click counts
+      final clickCounts = {
+        'beach': behavior.beachClicks,
+        'historical': behavior.historicalClicks,
+        'cultural': behavior.culturalClicks,
+        'religious': behavior.religiousClicks,
+      };
+
+      final topCategory =
+          clickCounts.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+
+      if (topCategory != _recommendedCategory && mounted) {
+        final places = await PlacesService.getPlacesByCategory(topCategory);
+
+        setState(() {
+          _recommendedCategory = topCategory;
+          _recommendedPlaces = places;
+        });
+
+        print('✅ Fallback recommendation: $topCategory');
+      }
+    } catch (e) {
+      print('❌ Error in fallback recommendation: $e');
     }
   }
 
@@ -271,16 +366,35 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
               ),
             ),
 
-            // Recommended Section (only show when no search and category is 'all')
-            if (_recommendedPlaces.isNotEmpty && 
-                _searchController.text.isEmpty && 
+            // Enhanced Recommended Section (only show when no search and category is 'all')
+            if (_useEnhancedRecommendations &&
+                _searchController.text.isEmpty &&
+                _selectedCategory == 'all')
+              _buildEnhancedRecommendedSection(
+                Provider.of<LanguageProvider>(context, listen: false),
+              ),
+
+            // Fallback Recommended Section
+            if (!_useEnhancedRecommendations &&
+                _recommendedPlaces.isNotEmpty &&
+                _searchController.text.isEmpty &&
                 _selectedCategory == 'all')
               _buildRecommendedSection(
                 Provider.of<LanguageProvider>(context, listen: false),
               ),
 
-            // Trending Section (only show when no search and category is 'all')
-            if (_searchController.text.isEmpty && _selectedCategory == 'all')
+            // Enhanced Trending Section (only show when no search and category is 'all')
+            if (_useEnhancedRecommendations &&
+                _searchController.text.isEmpty &&
+                _selectedCategory == 'all')
+              _buildEnhancedTrendingSection(
+                Provider.of<LanguageProvider>(context, listen: false),
+              ),
+
+            // Fallback Trending Section
+            if (!_useEnhancedRecommendations &&
+                _searchController.text.isEmpty &&
+                _selectedCategory == 'all')
               _buildTrendingSection(
                 Provider.of<LanguageProvider>(context, listen: false),
               ),
@@ -301,24 +415,250 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     );
   }
 
+  // Enhanced recommendation helper methods
+
+  Widget _buildEnhancedSectionHeader(
+    String title,
+    IconData icon, {
+    String? subtitle,
+    VoidCallback? onSeeAllPressed,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
+                color: AppColors.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+              if (onSeeAllPressed != null)
+                TextButton(
+                  onPressed: onSeeAllPressed,
+                  child: Text(
+                    'See All',
+                    style: GoogleFonts.poppins(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnhancedPlaceCard(
+    Map<String, dynamic> place, {
+    bool showRecommendationBadge = false,
+    String? recommendationReason,
+  }) {
+    return GestureDetector(
+      onTap: () => _handlePlaceCardTap(place),
+      child: ModernPlaceCard(
+        place: place,
+        onFavoriteChanged: _loadPlaces,
+        modern: true,
+        showRecommendationBadge: showRecommendationBadge,
+        recommendationReason:
+            recommendationReason ?? place['recommendation_reason'],
+      ),
+    );
+  }
+
+  void _handlePlaceCardTap(Map<String, dynamic> place) async {
+    final placeId =
+        place['id']?.toString() ?? place['name_eng']?.toString() ?? '';
+    final category = place['category']?.toString().toLowerCase() ?? '';
+
+    // Record interaction with enhanced behavior provider
+    try {
+      final enhancedBehaviorProvider =
+          Provider.of<EnhancedUserBehaviorProvider>(context, listen: false);
+      await enhancedBehaviorProvider.recordQuickInteraction(placeId, category);
+
+      // Refresh recommendations after interaction
+      await _refreshEnhancedRecommendations();
+    } catch (e) {
+      print('❌ Error recording place interaction: $e');
+    }
+
+    // Navigate to place details (implement your navigation logic here)
+    // Navigator.push(context, MaterialPageRoute(builder: (context) => PlaceDetailsScreen(place: place)));
+  }
+
+  Future<void> _refreshEnhancedRecommendations() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingEnhancedContent = true;
+      });
+    }
+
+    try {
+      final enhancedBehaviorProvider =
+          Provider.of<EnhancedUserBehaviorProvider>(context, listen: false);
+
+      // Load recommendations and trending in parallel for faster refresh
+      final futures = await Future.wait([
+        enhancedBehaviorProvider.getRecommendations(forceRefresh: true),
+        enhancedBehaviorProvider.getTrendingPlaces(forceRefresh: true),
+      ]);
+
+      final recommendations = futures[0];
+      final trendingPlaces = futures[1];
+
+      if (mounted) {
+        setState(() {
+          _enhancedRecommendations = recommendations;
+          _enhancedTrendingPlaces = trendingPlaces;
+          _isLoadingEnhancedContent = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error refreshing enhanced recommendations: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingEnhancedContent = false;
+        });
+      }
+    }
+  }
+
+  // Public method for refresh button
+  Future<void> _refreshRecommendations() async {
+    await _refreshEnhancedRecommendations();
+    
+    // Show a brief success message
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Recommendations refreshed!',
+            style: GoogleFonts.poppins(),
+          ),
+          duration: const Duration(seconds: 2),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+  }
+
+  String _getRecommendationSubtitle() {
+    try {
+      final enhancedBehaviorProvider =
+          Provider.of<EnhancedUserBehaviorProvider>(context, listen: false);
+      return enhancedBehaviorProvider.getRecommendationExplanation();
+    } catch (e) {
+      return 'Personalized recommendations for you';
+    }
+  }
+
+  String _getMostPreferredCategory() {
+    try {
+      final enhancedBehaviorProvider =
+          Provider.of<EnhancedUserBehaviorProvider>(context, listen: false);
+      return enhancedBehaviorProvider.mostPreferredCategory;
+    } catch (e) {
+      return 'beach';
+    }
+  }
+
   Widget _buildRecommendedSection(LanguageProvider languageProvider) {
+    if (_recommendedPlaces.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
     return SliverToBoxAdapter(
       child: Column(
         children: [
-          _buildSectionHeader(
-            'Recommended for You',
-            Icons.recommend,
-            onSeeAllPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SeeAllRecommendedScreen(
-                    recommendedPlaces: _recommendedPlaces,
-                    recommendedCategory: _recommendedCategory,
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.recommend,
+                      color: AppColors.primary,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Recommended for You',
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SeeAllRecommendedScreen(
+                              recommendedPlaces: _recommendedPlaces,
+                              recommendedCategory: _recommendedCategory,
+                              isEnhanced: false,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        'See All',
+                        style: GoogleFonts.poppins(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _getRecommendationExplanation(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
-              );
-            },
+              ],
+            ),
           ),
           SizedBox(
             height: 340,
@@ -327,16 +667,55 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: _recommendedPlaces.length,
               itemBuilder: (context, index) {
-                if (index >= _recommendedPlaces.length) {
-                  return const SizedBox.shrink();
-                }
                 final place = _recommendedPlaces[index];
                 return Container(
                   margin: const EdgeInsets.only(right: 16),
-                  child: ModernPlaceCard(
-                    place: place,
-                    onFavoriteChanged: _loadPlaces,
-                    modern: true,
+                  child: GestureDetector(
+                    onTap: () => _handlePlaceInteraction(place),
+                    child: Stack(
+                      children: [
+                        ModernPlaceCard(
+                          place: place,
+                          onFavoriteChanged: _loadPlaces,
+                          modern: true,
+                        ),
+                        // Recommendation badge
+                        if (place['recommendation_score'] != null)
+                          Positioned(
+                            top: 12,
+                            left: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.star,
+                                    color: Colors.white,
+                                    size: 12,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${(place['recommendation_score'] as double).toInt()}%',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -347,55 +726,188 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildTrendingSection(LanguageProvider languageProvider) {
-    final trendingPlaces = _places.take(5).toList();
+  String _getRecommendationExplanation() {
+    try {
+      final behavior =
+          Provider.of<UserBehaviorProvider>(context, listen: false);
+      final totalClicks = behavior.beachClicks +
+          behavior.historicalClicks +
+          behavior.culturalClicks +
+          behavior.religiousClicks;
 
-    if (trendingPlaces.isEmpty) {
-      return const SliverToBoxAdapter(child: SizedBox.shrink());
+      if (totalClicks == 0) {
+        return 'Discover amazing places in Somalia';
+      }
+
+      final clickCounts = {
+        'beach': behavior.beachClicks,
+        'historical': behavior.historicalClicks,
+        'cultural': behavior.culturalClicks,
+        'religious': behavior.religiousClicks,
+      };
+
+      final topCategory =
+          clickCounts.entries.reduce((a, b) => a.value > b.value ? a : b);
+
+      final percentage = ((topCategory.value / totalClicks) * 100).round();
+
+      return 'Based on your $percentage% preference for ${topCategory.key} places';
+    } catch (e) {
+      return 'Personalized recommendations for you';
     }
+  }
 
-    return SliverToBoxAdapter(
-      child: Column(
-        children: [
-          _buildSectionHeader(
-            'Trending Now',
-            Icons.trending_up,
-            onSeeAllPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SeeAllTrendingScreen(
-                    trendingPlaces: _places, // Pass all places for trending
-                  ),
-                ),
-              );
-            },
-          ),
-          SizedBox(
-            height: 350,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: trendingPlaces.length,
-              itemBuilder: (context, index) {
-                if (index >= trendingPlaces.length) {
-                  return const SizedBox.shrink();
-                }
-                final place = trendingPlaces[index];
-                return Container(
-                  margin: const EdgeInsets.only(right: 16),
-                  child: ModernPlaceCard(
-                    place: place,
-                    onFavoriteChanged: _loadPlaces,
-                    modern: true,
-                  ),
-                );
-              },
+  Widget _buildTrendingSection(LanguageProvider languageProvider) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _loadTrendingPlaces(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return SliverToBoxAdapter(
+            child: Container(
+              height: 350,
+              padding: const EdgeInsets.all(16),
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
             ),
+          );
+        }
+
+        final trendingPlaces = snapshot.data ?? [];
+
+        if (trendingPlaces.isEmpty) {
+          return const SliverToBoxAdapter(child: SizedBox.shrink());
+        }
+
+        return SliverToBoxAdapter(
+          child: Column(
+            children: [
+              _buildSectionHeader(
+                'Trending Now',
+                Icons.trending_up,
+                onSeeAllPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SeeAllTrendingScreen(
+                        trendingPlaces: trendingPlaces,
+                        isEnhanced: false,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              SizedBox(
+                height: 350,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: trendingPlaces.length,
+                  itemBuilder: (context, index) {
+                    final place = trendingPlaces[index];
+                    return Container(
+                      margin: const EdgeInsets.only(right: 16),
+                      child: GestureDetector(
+                        onTap: () => _handlePlaceInteraction(place),
+                        child: Stack(
+                          children: [
+                            ModernPlaceCard(
+                              place: place,
+                              onFavoriteChanged: _loadPlaces,
+                              modern: true,
+                            ),
+                            // Trending badge
+                            Positioned(
+                              top: 12,
+                              right: 12,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.9),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.trending_up,
+                                      color: Colors.white,
+                                      size: 12,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Trending',
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  Future<List<Map<String, dynamic>>> _loadTrendingPlaces() async {
+    try {
+      if (_enhancedRecommendationService == null) {
+        _enhancedRecommendationService = EnhancedRecommendationService();
+        await _enhancedRecommendationService.initialize();
+      }
+
+      final trendingPlaces =
+          await _enhancedRecommendationService.getTrendingPlaces(limit: 5);
+
+      // If no trending places from enhanced service, fallback to recent places
+      if (trendingPlaces.isEmpty) {
+        return _places.take(5).toList();
+      }
+
+      return trendingPlaces;
+    } catch (e) {
+      print('❌ Error loading trending places: $e');
+      return _places.take(5).toList();
+    }
+  }
+
+  void _handlePlaceInteraction(Map<String, dynamic> place) async {
+    try {
+      final placeId =
+          place['id']?.toString() ?? place['name_eng']?.toString() ?? '';
+      final category = place['category']?.toString().toLowerCase() ?? '';
+
+      // Record interaction with enhanced recommendation service
+      await _enhancedRecommendationService.recordPlaceInteraction(
+          placeId, category);
+
+      // Also record with user behavior provider for backward compatibility
+      final behavior =
+          Provider.of<UserBehaviorProvider>(context, listen: false);
+      behavior.recordClick(category);
+
+      print('✅ Recorded interaction: $placeId in $category');
+
+      // Refresh recommendations after interaction
+      _maybeRecommend();
+    } catch (e) {
+      print('❌ Error recording place interaction: $e');
+    }
   }
 
   Widget _buildAllPlacesSection(LanguageProvider languageProvider) {
@@ -601,7 +1113,37 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                           ),
                         ),
                       ),
-
+                      // Refresh Recommendations Button
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: IconButton(
+                              onPressed: _isLoadingEnhancedContent ? null : _refreshRecommendations,
+                              icon: _isLoadingEnhancedContent
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.refresh,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                              tooltip: 'Refresh Recommendations',
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
 
@@ -848,7 +1390,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.grid_view,
                     size: 16,
                     color: AppColors.primary,
@@ -902,7 +1444,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
             ),
           ],
         ),
-        onSelected: (selected) {
+        onSelected: (selected) async {
           setState(() {
             _selectedCategory = selected ? category : 'all';
             // Clear search when changing category for better UX
@@ -911,6 +1453,15 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
             }
             _performSearch(_searchController.text);
           });
+          // Record category interaction using enhanced provider
+          try {
+            if (_selectedCategory != 'all') {
+              await Provider.of<EnhancedUserBehaviorProvider>(context, listen: false)
+                  .recordCategoryInteraction(_selectedCategory);
+            }
+          } catch (e) {
+            // Silently ignore
+          }
         },
         backgroundColor: Colors.white,
         selectedColor: AppColors.primary,
@@ -1017,15 +1568,16 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
             child: Icon(icon, color: AppColors.primary, size: 20),
           ),
           const SizedBox(width: 12),
-          Text(
-            title,
-            style: GoogleFonts.poppins(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
+          Expanded(
+            child: Text(
+              title,
+              style: GoogleFonts.poppins(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
             ),
           ),
-          const Spacer(),
           TextButton(
             onPressed: onSeeAllPressed,
             child: Text(
@@ -1035,6 +1587,155 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                 fontWeight: FontWeight.w600,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnhancedRecommendedSection(LanguageProvider languageProvider) {
+    return SliverToBoxAdapter(
+      child: Column(
+        children: [
+          _buildEnhancedSectionHeader(
+            'Recommended for You',
+            Icons.star,
+            onSeeAllPressed: _isLoadingEnhancedContent || _enhancedRecommendations.isEmpty ? null : () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SeeAllRecommendedScreen(
+                    recommendedPlaces: _enhancedRecommendations,
+                    recommendedCategory: _getMostPreferredCategory(),
+                    isEnhanced: true,
+                  ),
+                ),
+              );
+            },
+            subtitle: _isLoadingEnhancedContent ? 'Loading personalized recommendations...' : _getRecommendationSubtitle(),
+          ),
+          SizedBox(
+            height: 350,
+            child: _isLoadingEnhancedContent
+                ? _buildUnifiedLoadingIndicator()
+                : _enhancedRecommendations.isEmpty
+                    ? _buildEmptyState('No recommendations available', Icons.star_outline)
+                    : ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: _enhancedRecommendations.take(5).length,
+                        itemBuilder: (context, index) {
+                          final place = _enhancedRecommendations[index];
+                          return Container(
+                            width: 280,
+                            margin: const EdgeInsets.only(right: 16),
+                            child: _buildEnhancedPlaceCard(
+                              place,
+                              showRecommendationBadge: true,
+                              recommendationReason: place['recommendationReason'],
+                            ),
+                          );
+                        },
+                      ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnhancedTrendingSection(LanguageProvider languageProvider) {
+    return SliverToBoxAdapter(
+      child: Column(
+        children: [
+          _buildEnhancedSectionHeader(
+            'Trending Now',
+            Icons.trending_up,
+            onSeeAllPressed: _isLoadingEnhancedContent || _enhancedTrendingPlaces.isEmpty ? null : () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SeeAllTrendingScreen(
+                    trendingPlaces: _enhancedTrendingPlaces,
+                    isEnhanced: true,
+                  ),
+                ),
+              );
+            },
+            subtitle: _isLoadingEnhancedContent ? 'Loading trending destinations...' : 'Popular destinations right now',
+          ),
+          SizedBox(
+            height: 350,
+            child: _isLoadingEnhancedContent
+                ? _buildUnifiedLoadingIndicator()
+                : _enhancedTrendingPlaces.isEmpty
+                    ? _buildEmptyState('No trending places available', Icons.trending_up_outlined)
+                    : ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: _enhancedTrendingPlaces.take(5).length,
+                        itemBuilder: (context, index) {
+                          final place = _enhancedTrendingPlaces[index];
+                          return Container(
+                            width: 280,
+                            margin: const EdgeInsets.only(right: 16),
+                            child: _buildEnhancedPlaceCard(
+                              place,
+                              showRecommendationBadge: true,
+                              recommendationReason: place['trendingReason'],
+                            ),
+                          );
+                        },
+                      ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUnifiedLoadingIndicator() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Loading recommendations and trending places...',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message, IconData icon) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 64,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

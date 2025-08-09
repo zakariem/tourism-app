@@ -12,6 +12,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'dart:async';
 import 'package:tourism_app/screens/dashboard/dashboard_screen.dart';
+// Enhanced behavior provider import
+import 'package:tourism_app/providers/enhanced_user_behavior_provider.dart';
 
 class PlaceDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> place;
@@ -47,6 +49,23 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
     _enterTime = DateTime.now();
     _checkFavoriteStatus();
     _setupAnimations();
+
+    // Start enhanced place view tracking
+    Future.microtask(() {
+      try {
+        final placeId = widget.place['_id']?.toString() ??
+            widget.place['id']?.toString() ??
+            widget.place['name_eng']?.toString() ?? '';
+        final category =
+            (widget.place['category']?.toString() ?? 'unknown').toLowerCase();
+        if (placeId.isNotEmpty) {
+          Provider.of<EnhancedUserBehaviorProvider>(context, listen: false)
+              .startPlaceView(placeId, category);
+        }
+      } catch (e) {
+        // Handle error silently
+      }
+    });
   }
 
 
@@ -98,6 +117,13 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
   void dispose() {
     final seconds = DateTime.now().difference(_enterTime).inSeconds.toDouble();
     _userBehaviorProvider?.recordViewTime(seconds, notify: false);
+    // End enhanced place view tracking
+    try {
+      Provider.of<EnhancedUserBehaviorProvider>(context, listen: false)
+          .endPlaceView();
+    } catch (e) {
+      // Handle error silently
+    }
     _animationController.dispose();
     _favoriteAnimationController.dispose();
     _fabAnimationController.dispose();
@@ -148,6 +174,19 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
 
           // Record user behavior for recommendation system
           _userBehaviorProvider?.recordClick(widget.place['category']);
+          // Enhanced: record quick interaction for favorites toggle
+          try {
+            final category =
+                (widget.place['category']?.toString() ?? 'unknown').toLowerCase();
+            final placeId = widget.place['_id']?.toString() ??
+                widget.place['id']?.toString() ?? '';
+            if (placeId.isNotEmpty) {
+              Provider.of<EnhancedUserBehaviorProvider>(context, listen: false)
+                  .recordQuickInteraction(placeId, category);
+            }
+          } catch (e) {
+            // Handle error silently
+          }
 
           // Show feedback
           ScaffoldMessenger.of(context).showSnackBar(

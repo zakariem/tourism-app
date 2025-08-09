@@ -294,11 +294,14 @@ class _SeeAllPlacesScreenState extends State<SeeAllPlacesScreen> {
                           style: const TextStyle(fontSize: 14),
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          category['label']!,
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                        Flexible(
+                          child: Text(
+                            category['label']!,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],

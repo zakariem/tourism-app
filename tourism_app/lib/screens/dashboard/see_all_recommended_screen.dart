@@ -7,11 +7,13 @@ import 'package:google_fonts/google_fonts.dart';
 class SeeAllRecommendedScreen extends StatefulWidget {
   final List<Map<String, dynamic>> recommendedPlaces;
   final String? recommendedCategory;
+  final bool isEnhanced;
 
   const SeeAllRecommendedScreen({
     Key? key,
     required this.recommendedPlaces,
     this.recommendedCategory,
+    this.isEnhanced = false,
   }) : super(key: key);
 
   @override
@@ -225,6 +227,12 @@ class _SeeAllRecommendedScreenState extends State<SeeAllRecommendedScreen> {
                           itemCount: _filteredPlaces.length,
                           itemBuilder: (context, index) {
                             final place = _filteredPlaces[index];
+                            final recommendationReason = widget.isEnhanced && place['recommendationReason'] != null
+                                ? place['recommendationReason']
+                                : (widget.recommendedCategory != null
+                                    ? 'Recommended for ${widget.recommendedCategory}'
+                                    : 'Recommended for you');
+                            
                             return Container(
                               margin: EdgeInsets.only(bottom: bottomMargin),
                               child: ModernPlaceCard(
@@ -233,6 +241,8 @@ class _SeeAllRecommendedScreenState extends State<SeeAllRecommendedScreen> {
                                   // Refresh callback if needed
                                 },
                                 modern: true,
+                                showRecommendationBadge: true,
+                                recommendationReason: recommendationReason,
                               ),
                             );
                           },

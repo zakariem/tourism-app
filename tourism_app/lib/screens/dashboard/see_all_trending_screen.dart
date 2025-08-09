@@ -7,10 +7,12 @@ import 'package:google_fonts/google_fonts.dart';
 
 class SeeAllTrendingScreen extends StatefulWidget {
   final List<Map<String, dynamic>> trendingPlaces;
+  final bool isEnhanced;
 
   const SeeAllTrendingScreen({
     Key? key,
     required this.trendingPlaces,
+    this.isEnhanced = false,
   }) : super(key: key);
 
   @override
@@ -295,52 +297,20 @@ class _SeeAllTrendingScreenState extends State<SeeAllTrendingScreen> {
                     itemCount: _filteredPlaces.length,
                     itemBuilder: (context, index) {
                       final place = _filteredPlaces[index];
+                      final trendingReason = widget.isEnhanced && place['trendingReason'] != null
+                          ? place['trendingReason']
+                          : 'Trending #${index + 1}';
+                      
                       return Container(
                         margin: const EdgeInsets.only(bottom: 16),
-                        child: Stack(
-                          children: [
-                            ModernPlaceCard(
-                              place: place,
-                              onFavoriteChanged: () {
-                                // Refresh callback if needed
-                              },
-                              modern: true,
-                            ),
-                            // Trending badge
-                            Positioned(
-                              top: 12,
-                              right: 12,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.trending_up,
-                                      color: Colors.white,
-                                      size: 12,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '#${index + 1}',
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
+                        child: ModernPlaceCard(
+                          place: place,
+                          onFavoriteChanged: () {
+                            // Refresh callback if needed
+                          },
+                          modern: true,
+                          showRecommendationBadge: true,
+                          recommendationReason: trendingReason,
                         ),
                       );
                     },

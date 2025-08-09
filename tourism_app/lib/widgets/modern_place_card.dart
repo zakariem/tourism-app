@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
 import 'package:tourism_app/providers/auth_provider.dart';
 import 'package:tourism_app/providers/favorites_provider.dart';
+import 'package:tourism_app/providers/enhanced_user_behavior_provider.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:tourism_app/screens/place_details_screen.dart';
 
@@ -12,12 +13,16 @@ class ModernPlaceCard extends StatefulWidget {
   final Map<String, dynamic> place;
   final VoidCallback? onFavoriteChanged;
   final bool modern;
+  final bool showRecommendationBadge;
+  final String? recommendationReason;
 
   const ModernPlaceCard({
     Key? key,
     required this.place,
     this.onFavoriteChanged,
     this.modern = true,
+    this.showRecommendationBadge = false,
+    this.recommendationReason,
   }) : super(key: key);
 
   @override
@@ -146,6 +151,16 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
       _animationController.reverse();
     });
 
+    // Record quick interaction with EnhancedUserBehaviorProvider
+    try {
+      final placeId = widget.place['id']?.toString() ?? widget.place['_id']?.toString() ?? widget.place['name_eng']?.toString() ?? '';
+      final category = widget.place['category']?.toString().toLowerCase() ?? 'unknown';
+      final enhancedBehaviorProvider = Provider.of<EnhancedUserBehaviorProvider>(context, listen: false);
+      enhancedBehaviorProvider.recordQuickInteraction(placeId, category);
+    } catch (e) {
+      print('❌ Error recording quick interaction: $e');
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -266,6 +281,40 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
                             ),
                           ),
 
+                          // Recommendation Badge
+                          if (widget.showRecommendationBadge)
+                            Positioned(
+                              top: 12,
+                              right: 60,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.9),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.star,
+                                      color: Colors.white,
+                                      size: 12,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      'Recommended',
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
                           // Favorite Button
                           Positioned(
                             top: 12,
@@ -374,6 +423,49 @@ class _ModernPlaceCardState extends State<ModernPlaceCard>
                               );
                             },
                           ),
+
+                          // Recommendation Reason
+                          if (widget.recommendationReason != null)
+                            Column(
+                              children: [
+                                const SizedBox(height: 8),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.orange.withOpacity(0.3),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.lightbulb_outline,
+                                        color: Colors.orange[700],
+                                        size: 14,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          widget.recommendationReason!,
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.orange[700],
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
 
                           const SizedBox(height: 12),
 

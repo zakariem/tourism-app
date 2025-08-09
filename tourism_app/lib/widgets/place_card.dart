@@ -7,6 +7,7 @@ import 'package:tourism_app/utils/app_colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:tourism_app/screens/place_details_screen.dart';
 import 'package:tourism_app/providers/user_behavior_provider.dart';
+import 'package:tourism_app/providers/enhanced_user_behavior_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class PlaceCard extends StatefulWidget {
@@ -251,6 +252,14 @@ class _PlaceCardState extends State<PlaceCard> {
             child: InkWell(
               borderRadius: BorderRadius.circular(24),
               onTap: () {
+                // Record quick interaction with EnhancedUserBehaviorProvider
+                try {
+                  final placeId = widget.place['id']?.toString() ?? widget.place['_id']?.toString() ?? widget.place['name_eng']?.toString() ?? '';
+                  final category = widget.place['category']?.toString().toLowerCase() ?? 'unknown';
+                  Provider.of<EnhancedUserBehaviorProvider>(context, listen: false).recordQuickInteraction(placeId, category);
+                } catch (e) {
+                  print('[PlaceCard Modern] Error recording quick interaction: $e');
+                }
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -415,6 +424,14 @@ class _PlaceCardState extends State<PlaceCard> {
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
+                              // Record quick interaction with EnhancedUserBehaviorProvider
+                              try {
+                                final placeId = widget.place['id']?.toString() ?? widget.place['_id']?.toString() ?? widget.place['name_eng']?.toString() ?? '';
+                                final category = widget.place['category']?.toString().toLowerCase() ?? 'unknown';
+                                Provider.of<EnhancedUserBehaviorProvider>(context, listen: false).recordQuickInteraction(placeId, category);
+                              } catch (e) {
+                                print('[PlaceCard Modern] Error recording quick interaction: $e');
+                              }
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -454,12 +471,19 @@ class _PlaceCardState extends State<PlaceCard> {
           ),
           child: InkWell(
             onTap: () {
-              print(
-                  '[PlaceCard] Place tapped: \\${widget.place['name_eng']} (\\${widget.place['category']})');
+              // Record quick interaction with EnhancedUserBehaviorProvider
+              try {
+                final placeId = widget.place['id']?.toString() ?? widget.place['_id']?.toString() ?? widget.place['name_eng']?.toString() ?? '';
+                final category = widget.place['category']?.toString().toLowerCase() ?? 'unknown';
+                Provider.of<EnhancedUserBehaviorProvider>(context, listen: false).recordQuickInteraction(placeId, category);
+              } catch (e) {
+                print('[PlaceCard] Error recording quick interaction: $e');
+              }
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => PlaceDetailsScreen(place: widget.place),
+                  builder: (context) =>
+                      PlaceDetailsScreen(place: widget.place),
                 ),
               ).then((_) => {
                     widget.onFavoriteChanged(),
@@ -586,19 +610,27 @@ class _PlaceCardState extends State<PlaceCard> {
                         alignment: Alignment.centerRight,
                         child: TextButton(
                           onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    PlaceDetailsScreen(place: widget.place),
-                              ),
-                            ).then((_) => {
-                                  widget.onFavoriteChanged(),
-                                  Provider.of<UserBehaviorProvider>(context,
-                                          listen: false)
-                                      .recordClick(widget.place['category'])
-                                });
-                          },
+                              // Record quick interaction with EnhancedUserBehaviorProvider
+                              try {
+                                final placeId = widget.place['id']?.toString() ?? widget.place['_id']?.toString() ?? widget.place['name_eng']?.toString() ?? '';
+                                final category = widget.place['category']?.toString().toLowerCase() ?? 'unknown';
+                                Provider.of<EnhancedUserBehaviorProvider>(context, listen: false).recordQuickInteraction(placeId, category);
+                              } catch (e) {
+                                print('[PlaceCard] Error recording quick interaction: $e');
+                              }
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      PlaceDetailsScreen(place: widget.place),
+                                ),
+                              ).then((_) => {
+                                    widget.onFavoriteChanged(),
+                                    Provider.of<UserBehaviorProvider>(context,
+                                            listen: false)
+                                        .recordClick(widget.place['category'])
+                                  });
+                            },
                           child: Text(
                             languageProvider.getText('read_more'),
                             style: TextStyle(

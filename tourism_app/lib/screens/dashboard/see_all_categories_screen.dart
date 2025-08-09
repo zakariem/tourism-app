@@ -5,6 +5,7 @@ import 'package:tourism_app/utils/app_colors.dart';
 import 'package:tourism_app/services/places_service.dart';
 import 'package:tourism_app/widgets/modern_place_card.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:tourism_app/providers/enhanced_user_behavior_provider.dart';
 
 class SeeAllCategoriesScreen extends StatefulWidget {
   const SeeAllCategoriesScreen({Key? key}) : super(key: key);
@@ -186,7 +187,18 @@ class _SeeAllCategoriesScreenState extends State<SeeAllCategoriesScreen> {
     LanguageProvider languageProvider,
   ) {
     return GestureDetector(
-      onTap: () => _selectCategory(categoryKey),
+      onTap: () async {
+        // Record category interaction using EnhancedUserBehaviorProvider
+        try {
+          if (categoryKey != 'all') {
+            await Provider.of<EnhancedUserBehaviorProvider>(context, listen: false)
+                .recordCategoryInteraction(categoryKey);
+          }
+        } catch (e) {
+          print('[SeeAllCategories] Error recording category interaction: $e');
+        }
+        await _selectCategory(categoryKey);
+      },
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
