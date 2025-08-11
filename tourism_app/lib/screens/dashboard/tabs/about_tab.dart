@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
 import 'package:tourism_app/providers/auth_provider.dart';
-import 'package:tourism_app/providers/user_behavior_provider.dart';
+import 'package:tourism_app/providers/enhanced_user_behavior_provider.dart';
 import 'package:tourism_app/services/app_statistics_service.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -566,11 +566,11 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
 
   Widget _buildStatsSection(
       LanguageProvider languageProvider, bool isTablet, bool isMobile) {
-    return Consumer2<UserBehaviorProvider, AuthProvider>(
-      builder: (context, userBehavior, authProvider, child) {
+    return Consumer2<EnhancedUserBehaviorProvider, AuthProvider>(
+      builder: (context, enhancedUserBehavior, authProvider, child) {
         return FutureBuilder<Map<String, dynamic>>(
           future: AppStatisticsService.getAppStatistics(
-            userBehavior: userBehavior,
+            userBehavior: enhancedUserBehavior,
             authProvider: authProvider,
           ),
           builder: (context, snapshot) {
@@ -756,12 +756,10 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
 
   Widget _buildUserActivitySection(
       LanguageProvider languageProvider, bool isTablet, bool isMobile) {
-    return Consumer<UserBehaviorProvider>(
-      builder: (context, userBehavior, child) {
-        final totalClicks = userBehavior.beachClicks +
-            userBehavior.historicalClicks +
-            userBehavior.culturalClicks +
-            userBehavior.religiousClicks;
+    return Consumer<EnhancedUserBehaviorProvider>(
+      builder: (context, enhancedUserBehavior, child) {
+        final categoryInteractions = enhancedUserBehavior.categoryInteractions;
+        final totalClicks = categoryInteractions.values.fold(0, (sum, count) => sum + count);
 
         if (totalClicks == 0) {
           return const SizedBox.shrink(); // Hide if no activity
@@ -769,7 +767,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
 
         final activityStats = [
           {
-            'number': '${userBehavior.beachClicks}',
+            'number': '${categoryInteractions['beach'] ?? 0}',
             'label': languageProvider.currentLanguage == 'en'
                 ? 'Beach Visits'
                 : 'Booqashada Xeebaha',
@@ -777,7 +775,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
             'color': const Color(0xFF06B6D4),
           },
           {
-            'number': '${userBehavior.historicalClicks}',
+            'number': '${categoryInteractions['historical'] ?? 0}',
             'label': languageProvider.currentLanguage == 'en'
                 ? 'Historical Sites'
                 : 'Meelaha Taariikhiga',
@@ -785,7 +783,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
             'color': const Color(0xFF8B5CF6),
           },
           {
-            'number': '${userBehavior.culturalClicks}',
+            'number': '${categoryInteractions['cultural'] ?? 0}',
             'label': languageProvider.currentLanguage == 'en'
                 ? 'Cultural Places'
                 : 'Meelaha Dhaqanka',
@@ -793,7 +791,7 @@ class _AboutTabState extends State<AboutTab> with TickerProviderStateMixin {
             'color': const Color(0xFF10B981),
           },
           {
-            'number': '${userBehavior.religiousClicks}',
+            'number': '${categoryInteractions['religious'] ?? 0}',
             'label': languageProvider.currentLanguage == 'en'
                 ? 'Religious Sites'
                 : 'Meelaha Diinta',

@@ -32,7 +32,7 @@ class FavoritesProvider with ChangeNotifier {
 
     try {
       _favorites = await FavoritesService.getFavorites();
-      _favoriteIds = _favorites.map((place) => place['_id'].toString()).toSet();
+      _favoriteIds = _favorites.map((place) => (place['_id']?.toString() ?? place['id']?.toString() ?? '')).toSet();
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -59,7 +59,7 @@ class FavoritesProvider with ChangeNotifier {
 
         // Add place data to favorites list if provided
         if (placeData != null &&
-            !_favorites.any((place) => place['_id'] == placeId)) {
+            !_favorites.any((place) => (place['_id']?.toString() ?? place['id']?.toString() ?? '') == placeId)) {
           _favorites.add(placeData);
         }
 
@@ -88,7 +88,7 @@ class FavoritesProvider with ChangeNotifier {
       final success = await FavoritesService.removeFromFavorites(placeId);
       if (success) {
         _favoriteIds.remove(placeId);
-        _favorites.removeWhere((place) => place['_id'] == placeId);
+        _favorites.removeWhere((place) => (place['_id']?.toString() ?? place['id']?.toString() ?? '') == placeId);
         _error = null;
         notifyListeners();
         return true;
@@ -117,12 +117,12 @@ class FavoritesProvider with ChangeNotifier {
       if (newIsFavorite) {
         _favoriteIds.add(placeId);
         if (placeData != null &&
-            !_favorites.any((place) => place['_id'] == placeId)) {
+            !_favorites.any((place) => (place['_id']?.toString() ?? place['id']?.toString() ?? '') == placeId)) {
           _favorites.add(placeData);
         }
       } else {
         _favoriteIds.remove(placeId);
-        _favorites.removeWhere((place) => place['_id'] == placeId);
+        _favorites.removeWhere((place) => (place['_id']?.toString() ?? place['id']?.toString() ?? '') == placeId);
       }
 
       _error = null;
@@ -177,7 +177,7 @@ class FavoritesProvider with ChangeNotifier {
   // Get a specific favorite place by ID
   Map<String, dynamic>? getFavoriteById(String placeId) {
     try {
-      return _favorites.firstWhere((place) => place['_id'] == placeId);
+      return _favorites.firstWhere((place) => (place['_id']?.toString() ?? place['id']?.toString() ?? '') == placeId);
     } catch (e) {
       return null;
     }

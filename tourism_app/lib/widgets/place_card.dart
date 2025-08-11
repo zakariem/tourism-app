@@ -6,7 +6,7 @@ import 'package:tourism_app/providers/favorites_provider.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:tourism_app/screens/place_details_screen.dart';
-import 'package:tourism_app/providers/user_behavior_provider.dart';
+
 import 'package:tourism_app/providers/enhanced_user_behavior_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -268,8 +268,6 @@ class _PlaceCardState extends State<PlaceCard> {
                   ),
                 ).then((_) => {
                       widget.onFavoriteChanged(),
-                      Provider.of<UserBehaviorProvider>(context, listen: false)
-                          .recordClick(widget.place['category'])
                     });
               },
               child: Column(
@@ -440,9 +438,6 @@ class _PlaceCardState extends State<PlaceCard> {
                                 ),
                               ).then((_) => {
                                     widget.onFavoriteChanged(),
-                                    Provider.of<UserBehaviorProvider>(context,
-                                            listen: false)
-                                        .recordClick(widget.place['category'])
                                   });
                             },
                             child: Text(
@@ -487,8 +482,6 @@ class _PlaceCardState extends State<PlaceCard> {
                 ),
               ).then((_) => {
                     widget.onFavoriteChanged(),
-                    Provider.of<UserBehaviorProvider>(context, listen: false)
-                        .recordClick(widget.place['category'])
                   });
             },
             child: Column(
@@ -626,9 +619,6 @@ class _PlaceCardState extends State<PlaceCard> {
                                 ),
                               ).then((_) => {
                                     widget.onFavoriteChanged(),
-                                    Provider.of<UserBehaviorProvider>(context,
-                                            listen: false)
-                                        .recordClick(widget.place['category'])
                                   });
                             },
                           child: Text(

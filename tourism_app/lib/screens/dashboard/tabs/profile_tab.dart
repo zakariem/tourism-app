@@ -399,7 +399,7 @@ class _ProfileTabState extends State<ProfileTab> with TickerProviderStateMixin {
                               ),
                               child: Text(
                                 languageProvider.getText('member_since') +
-                                    ' 2023',
+                                    ' ${DateTime.now().year}',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 14,

@@ -23,6 +23,30 @@ class EnhancedRecommendationService {
   Future<void> initialize() async {
     await _loadUserInteractions();
     await _calculateTrendingScores();
+    
+    // Clean up old data periodically (check if last cleanup was more than 7 days ago)
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastCleanupStr = prefs.getString('last_data_cleanup');
+      final now = DateTime.now();
+      
+      bool shouldCleanup = lastCleanupStr == null;
+      if (lastCleanupStr != null) {
+        try {
+          final lastCleanup = DateTime.parse(lastCleanupStr);
+          shouldCleanup = now.difference(lastCleanup).inDays >= 7;
+        } catch (parseError) {
+          shouldCleanup = true; // Force cleanup if timestamp is corrupted
+        }
+      }
+      
+      if (shouldCleanup) {
+        await _cleanupOldData();
+        await prefs.setString('last_data_cleanup', now.toIso8601String());
+      }
+    } catch (e) {
+      print('[EnhancedRecommendation] Error during cleanup check: $e');
+    }
   }
 
   // Record user interaction with a category
@@ -80,6 +104,13 @@ class EnhancedRecommendationService {
 
           // Add equal recommendation score to all places
           for (final place in allPlaces) {
+            // Ensure essential fields are not null
+            place['id'] = place['id']?.toString() ?? '';
+            place['name_eng'] = place['name_eng']?.toString() ?? place['name']?.toString() ?? '';
+            place['category'] = place['category']?.toString() ?? '';
+            place['description'] = place['description']?.toString() ?? '';
+            place['location'] = place['location']?.toString() ?? '';
+            
             place['recommendation_score'] = 50.0; // Base score for new users
             place['recommendation_reason'] = 'Discover amazing places';
           }
@@ -105,6 +136,13 @@ class EnhancedRecommendationService {
 
             // Calculate recommendation score for each place
             for (final place in categoryPlaces) {
+              // Ensure essential fields are not null
+              place['id'] = place['id']?.toString() ?? '';
+              place['name_eng'] = place['name_eng']?.toString() ?? place['name']?.toString() ?? '';
+              place['category'] = place['category']?.toString() ?? '';
+              place['description'] = place['description']?.toString() ?? '';
+              place['location'] = place['location']?.toString() ?? '';
+              
               final placeId = place['id']?.toString() ??
                   place['name_eng']?.toString() ??
                   '';
@@ -151,6 +189,13 @@ class EnhancedRecommendationService {
 
       // Calculate trending score for each place
       for (final place in allPlaces) {
+        // Ensure essential fields are not null
+        place['id'] = place['id']?.toString() ?? '';
+        place['name_eng'] = place['name_eng']?.toString() ?? place['name']?.toString() ?? '';
+        place['category'] = place['category']?.toString() ?? '';
+        place['description'] = place['description']?.toString() ?? '';
+        place['location'] = place['location']?.toString() ?? '';
+        
         final placeId =
             place['id']?.toString() ?? place['name_eng']?.toString() ?? '';
         final category = place['category']?.toString().toLowerCase() ?? '';
@@ -267,12 +312,21 @@ class EnhancedRecommendationService {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      await prefs.setString(
-          'category_interactions', json.encode(_categoryInteractions));
-      await prefs.setString(
-          'category_view_times', json.encode(_categoryViewTimes));
-      await prefs.setString(
-          'place_interactions', json.encode(_placeInteractions));
+      // Check data size before saving to prevent quota issues
+      final categoryJson = json.encode(_categoryInteractions);
+      final viewTimesJson = json.encode(_categoryViewTimes);
+      final placeJson = json.encode(_placeInteractions);
+      
+      // Only save if data is reasonable size (less than 100KB each)
+      if (categoryJson.length < 100000) {
+        await prefs.setString('category_interactions', categoryJson);
+      }
+      if (viewTimesJson.length < 100000) {
+        await prefs.setString('category_view_times', viewTimesJson);
+      }
+      if (placeJson.length < 100000) {
+        await prefs.setString('place_interactions', placeJson);
+      }
 
       // Save last interaction times as timestamps
       final lastInteractionTimestamps = <String, int>{};
@@ -280,8 +334,10 @@ class EnhancedRecommendationService {
         lastInteractionTimestamps[entry.key] =
             entry.value.millisecondsSinceEpoch;
       }
-      await prefs.setString(
-          'last_interaction_times', json.encode(lastInteractionTimestamps));
+      final timestampsJson = json.encode(lastInteractionTimestamps);
+      if (timestampsJson.length < 100000) {
+        await prefs.setString('last_interaction_times', timestampsJson);
+      }
       
       // Save timestamp of last save for debugging
       await prefs.setString('last_data_save', DateTime.now().toIso8601String());
@@ -289,6 +345,16 @@ class EnhancedRecommendationService {
       print('[EnhancedRecommendation] User interactions saved successfully');
     } catch (e) {
       print('[EnhancedRecommendation] Error saving user interactions: $e');
+      // If quota exceeded, clear some old data
+      if (e.toString().contains('QuotaExceededError')) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('place_interactions'); // Clear least important data first
+          print('[EnhancedRecommendation] Cleared place interactions due to quota limit');
+        } catch (clearError) {
+          print('[EnhancedRecommendation] Error clearing data: $clearError');
+        }
+      }
     }
   }
 
@@ -297,42 +363,69 @@ class EnhancedRecommendationService {
     try {
       final prefs = await SharedPreferences.getInstance();
 
+      // Load category interactions with error handling
       final categoryInteractionsStr = prefs.getString('category_interactions');
-      if (categoryInteractionsStr != null) {
-        final decoded =
-            json.decode(categoryInteractionsStr) as Map<String, dynamic>;
-        _categoryInteractions =
-            decoded.map((key, value) => MapEntry(key, value as int));
+      if (categoryInteractionsStr != null && categoryInteractionsStr.isNotEmpty) {
+        try {
+          final decoded = json.decode(categoryInteractionsStr) as Map<String, dynamic>;
+          _categoryInteractions = decoded.map((key, value) => MapEntry(key.toString(), (value as num?)?.toInt() ?? 0));
+        } catch (decodeError) {
+          print('[EnhancedRecommendation] Error decoding category interactions, resetting: $decodeError');
+          await prefs.remove('category_interactions');
+          _categoryInteractions = {};
+        }
       }
 
+      // Load category view times with error handling
       final categoryViewTimesStr = prefs.getString('category_view_times');
-      if (categoryViewTimesStr != null) {
-        final decoded =
-            json.decode(categoryViewTimesStr) as Map<String, dynamic>;
-        _categoryViewTimes = decoded
-            .map((key, value) => MapEntry(key, (value as num).toDouble()));
+      if (categoryViewTimesStr != null && categoryViewTimesStr.isNotEmpty) {
+        try {
+          final decoded = json.decode(categoryViewTimesStr) as Map<String, dynamic>;
+          _categoryViewTimes = decoded.map((key, value) => MapEntry(key.toString(), (value as num?)?.toDouble() ?? 0.0));
+        } catch (decodeError) {
+          print('[EnhancedRecommendation] Error decoding category view times, resetting: $decodeError');
+          await prefs.remove('category_view_times');
+          _categoryViewTimes = {};
+        }
       }
 
+      // Load place interactions with error handling
       final placeInteractionsStr = prefs.getString('place_interactions');
-      if (placeInteractionsStr != null) {
-        final decoded =
-            json.decode(placeInteractionsStr) as Map<String, dynamic>;
-        _placeInteractions =
-            decoded.map((key, value) => MapEntry(key, value as int));
+      if (placeInteractionsStr != null && placeInteractionsStr.isNotEmpty) {
+        try {
+          final decoded = json.decode(placeInteractionsStr) as Map<String, dynamic>;
+          _placeInteractions = decoded.map((key, value) => MapEntry(key.toString(), (value as num?)?.toInt() ?? 0));
+        } catch (decodeError) {
+          print('[EnhancedRecommendation] Error decoding place interactions, resetting: $decodeError');
+          await prefs.remove('place_interactions');
+          _placeInteractions = {};
+        }
       }
 
+      // Load last interaction times with error handling
       final lastInteractionTimesStr = prefs.getString('last_interaction_times');
-      if (lastInteractionTimesStr != null) {
-        final decoded =
-            json.decode(lastInteractionTimesStr) as Map<String, dynamic>;
-        _lastInteractionTimes = decoded.map((key, value) =>
-            MapEntry(key, DateTime.fromMillisecondsSinceEpoch(value as int)));
+      if (lastInteractionTimesStr != null && lastInteractionTimesStr.isNotEmpty) {
+        try {
+          final decoded = json.decode(lastInteractionTimesStr) as Map<String, dynamic>;
+          _lastInteractionTimes = decoded.map((key, value) {
+            final timestamp = (value as num?)?.toInt() ?? 0;
+            return MapEntry(key.toString(), DateTime.fromMillisecondsSinceEpoch(timestamp));
+          });
+        } catch (decodeError) {
+          print('[EnhancedRecommendation] Error decoding interaction times, resetting: $decodeError');
+          await prefs.remove('last_interaction_times');
+          _lastInteractionTimes = {};
+        }
       }
 
-      print(
-          '[EnhancedRecommendation] User interactions loaded: $_categoryInteractions');
+      print('[EnhancedRecommendation] User interactions loaded: $_categoryInteractions');
     } catch (e) {
       print('[EnhancedRecommendation] Error loading user interactions: $e');
+      // Reset all data on critical error
+      _categoryInteractions = {};
+      _categoryViewTimes = {};
+      _placeInteractions = {};
+      _lastInteractionTimes = {};
     }
   }
 
@@ -357,13 +450,57 @@ class EnhancedRecommendationService {
         _categoryInteractions.values.fold(0, (sum, count) => sum + count);
     final priorities = _calculateCategoryPriorities();
 
+    // Find most preferred category safely
+    String? mostPreferredCategory;
+    if (priorities.isNotEmpty) {
+      mostPreferredCategory = priorities.entries
+          .reduce((a, b) => a.value > b.value ? a : b)
+          .key;
+    }
+
     return {
       'total_interactions': totalInteractions,
       'category_interactions': Map.from(_categoryInteractions),
       'category_priorities': priorities,
-      'most_preferred_category':
-          priorities.entries.reduce((a, b) => a.value > b.value ? a : b).key,
+      'most_preferred_category': mostPreferredCategory ?? 'beach', // Default fallback
     };
+  }
+
+  // Clean up old data to prevent storage quota issues
+  Future<void> _cleanupOldData() async {
+    try {
+      // Remove interactions older than 30 days
+      final cutoffDate = DateTime.now().subtract(const Duration(days: 30));
+      final keysToRemove = <String>[];
+      
+      for (final entry in _lastInteractionTimes.entries) {
+        if (entry.value.isBefore(cutoffDate)) {
+          keysToRemove.add(entry.key);
+        }
+      }
+      
+      // Remove old interactions
+      for (final key in keysToRemove) {
+        _categoryInteractions.remove(key);
+        _categoryViewTimes.remove(key);
+        _lastInteractionTimes.remove(key);
+      }
+      
+      // Limit place interactions to most recent 100
+      if (_placeInteractions.length > 100) {
+        final sortedPlaces = _placeInteractions.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        _placeInteractions.clear();
+        _placeInteractions.addAll(Map.fromEntries(sortedPlaces.take(100)));
+      }
+      
+      if (keysToRemove.isNotEmpty) {
+        await _saveUserInteractions();
+        print('[EnhancedRecommendation] Cleaned up ${keysToRemove.length} old interactions');
+      }
+    } catch (e) {
+      print('[EnhancedRecommendation] Error cleaning up old data: $e');
+    }
   }
 
   // Reset user data (for testing or user preference)

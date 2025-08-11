@@ -9,7 +9,7 @@ import 'package:tourism_app/screens/auth/register_screen.dart';
 import 'package:tourism_app/screens/dashboard/dashboard_screen.dart';
 import 'package:tourism_app/screens/splash_screen.dart';
 import 'package:tourism_app/utils/app_colors.dart';
-import 'package:tourism_app/providers/user_behavior_provider.dart';
+
 import 'package:tourism_app/providers/enhanced_user_behavior_provider.dart';
 import 'package:tourism_app/services/smart_chat_service.dart';
 import 'package:flutter/foundation.dart';
@@ -49,7 +49,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => UserBehaviorProvider()),
+
         ChangeNotifierProvider(create: (_) => EnhancedUserBehaviorProvider()),
         ChangeNotifierProvider(create: (_) => FavoritesProvider()),
       ],

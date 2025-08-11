@@ -262,6 +262,10 @@ Instructions:
 7. Provide specific details from the places data when recommending locations
 8. Consider the user's favorites when making recommendations
 9. Be concise but informative
+10. IMPORTANT: If the user asks about topics outside Somalia tourism (like world facts, general knowledge, etc.), politely redirect them to tourism topics and provide this contact information:
+    📞 For general inquiries, please call: 619071794
+    🕐 Available from 09:00 AM to 07:00 PM
+    Example response: "I'm specialized in Somalia tourism. For general questions, please contact us at 619071794 (available 09:00 AM - 07:00 PM). How can I help you explore Somalia's amazing destinations?"
 
 User's Question: $message
 
@@ -282,8 +286,10 @@ Please provide a helpful response based on the context above.''';
       buffer.writeln('  Location: ${place['location']}');
       buffer.writeln('  Price: \$${place['pricePerPerson'] ?? place['price_per_person'] ?? 'Free'}');
       if (place['desc_eng'] != null) {
-        final desc = place['desc_eng'].toString();
-        buffer.writeln('  Description: ${desc.length > 100 ? desc.substring(0, 100) + '...' : desc}');
+        final desc = place['desc_eng']?.toString() ?? '';
+        if (desc.isNotEmpty) {
+          buffer.writeln('  Description: ${desc.length > 100 ? desc.substring(0, 100) + '...' : desc}');
+        }
       }
       buffer.writeln('');
     }
@@ -313,13 +319,13 @@ Please provide a helpful response based on the context above.''';
         ? '😔 Waan ogahay inaad dhibaato la kulantay. Waan ka xumahay!\n\n'
           '📞 Haddii aad u baahan tahay caawimaad degdeg ah, fadlan wac lambarkaan:\n'
           '**619071794**\n\n'
-          '🕐 Wakhtiga adeegga: 8:00 subaxnimo - 8:00 fiidnimo\n'
+          '🕐 Wakhtiga adeegga: 09:00 subaxnimo - 07:00 fiidnimo\n'
           '💬 Ama sii wad wadahadalka halkan, waan kaa caawin doonaa si fiican!\n\n'
           'Maxaan kuu samayn karaa si aan kaa caawiyo?'
         : '😔 I understand you\'re experiencing some frustration. I\'m sorry about that!\n\n'
           '📞 If you need immediate assistance, please call this number:\n'
           '**619071794**\n\n'
-          '🕐 Service hours: 8:00 AM - 8:00 PM\n'
+          '🕐 Service hours: 09:00 AM - 07:00 PM\n'
           '💬 Or continue chatting here, I\'m here to help you better!\n\n'
           'What can I do to assist you properly?';
   }

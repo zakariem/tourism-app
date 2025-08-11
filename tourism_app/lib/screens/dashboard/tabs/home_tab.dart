@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
-import 'package:tourism_app/providers/user_behavior_provider.dart';
+
 import 'package:tourism_app/providers/enhanced_user_behavior_provider.dart';
 import 'package:tourism_app/providers/favorites_provider.dart';
 import 'package:tourism_app/services/places_service.dart';
@@ -44,6 +44,9 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   final bool _useEnhancedRecommendations = true;
   double _scrollOffset = 0.0;
   late EnhancedRecommendationService _enhancedRecommendationService;
+  
+  // Store reference to the provider listener for proper cleanup
+  VoidCallback? _providerListener;
 
   late AnimationController _heroAnimationController;
   late Animation<double> _heroParallaxAnimation;
@@ -73,11 +76,42 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           Provider.of<EnhancedUserBehaviorProvider>(context, listen: false);
       
       // Set up a listener to update UI when cached data is loaded
-      void updateFromProvider() async {
-        if (mounted) {
+      _providerListener = () async {
+        if (!mounted) return;
+        
+        try {
           final recommendations = await enhancedBehaviorProvider.getRecommendations();
           final trendingPlaces = await enhancedBehaviorProvider.getTrendingPlaces();
           
+          if (mounted) {
+            setState(() {
+              _enhancedRecommendations = recommendations;
+              _enhancedTrendingPlaces = trendingPlaces;
+              _isLoadingEnhancedContent = false;
+            });
+          }
+        } catch (e) {
+          print('❌ Error in provider listener: $e');
+          if (mounted) {
+            setState(() {
+              _isLoadingEnhancedContent = false;
+            });
+          }
+        }
+      };
+      
+      // Add listener for immediate updates when cached data is available
+      enhancedBehaviorProvider.addListener(_providerListener!);
+      
+      // Initialize the provider (this will load cached data first, then fresh data)
+      await enhancedBehaviorProvider.initialize();
+
+      // Load current recommendations and trending
+      if (mounted) {
+        final recommendations = await enhancedBehaviorProvider.getRecommendations();
+        final trendingPlaces = await enhancedBehaviorProvider.getTrendingPlaces();
+
+        if (mounted) {
           setState(() {
             _enhancedRecommendations = recommendations;
             _enhancedTrendingPlaces = trendingPlaces;
@@ -85,27 +119,6 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           });
         }
       }
-      
-      // Add listener for immediate updates when cached data is available
-      enhancedBehaviorProvider.addListener(updateFromProvider);
-      
-      // Initialize the provider (this will load cached data first, then fresh data)
-      await enhancedBehaviorProvider.initialize();
-
-      // Load current recommendations and trending
-      final recommendations = await enhancedBehaviorProvider.getRecommendations();
-      final trendingPlaces = await enhancedBehaviorProvider.getTrendingPlaces();
-
-      if (mounted) {
-        setState(() {
-          _enhancedRecommendations = recommendations;
-          _enhancedTrendingPlaces = trendingPlaces;
-          _isLoadingEnhancedContent = false;
-        });
-      }
-      
-      // Remove the temporary listener
-      enhancedBehaviorProvider.removeListener(updateFromProvider);
     } catch (e) {
       print('❌ Error initializing enhanced recommendations: $e');
       if (mounted) {
@@ -132,9 +145,11 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
 
   void _setupScrollListener() {
     _scrollController.addListener(() {
-      setState(() {
-        _scrollOffset = _scrollController.offset;
-      });
+      if (mounted) {
+        setState(() {
+          _scrollOffset = _scrollController.offset;
+        });
+      }
     });
   }
 
@@ -144,6 +159,19 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     _scrollController.dispose();
     _searchDebounceTimer?.cancel();
     _heroAnimationController.dispose();
+    
+    // Remove the provider listener if it exists
+    if (_providerListener != null) {
+      try {
+        final enhancedBehaviorProvider =
+            Provider.of<EnhancedUserBehaviorProvider>(context, listen: false);
+        enhancedBehaviorProvider.removeListener(_providerListener!);
+        _providerListener = null;
+      } catch (e) {
+        // Ignore errors during disposal
+      }
+    }
+    
     super.dispose();
   }
 
@@ -174,16 +202,20 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   }
 
   Future<void> _loadLastRecommendation() async {
+    if (!mounted) return;
+    
     final prefs = await SharedPreferences.getInstance();
     final lastCategory = prefs.getString('last_recommended_category');
-    if (lastCategory != null) {
+    if (lastCategory != null && mounted) {
       try {
         final places = await PlacesService.getPlacesByCategory(lastCategory);
 
-        setState(() {
-          _recommendedCategory = lastCategory;
-          _recommendedPlaces = places;
-        });
+        if (mounted) {
+          setState(() {
+            _recommendedCategory = lastCategory;
+            _recommendedPlaces = places;
+          });
+        }
       } catch (e) {
         print('❌ Error loading last recommendation: $e');
       }
@@ -193,12 +225,16 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   void _maybeRecommend() async {
     if (_isRecommending || !mounted) return;
 
-    setState(() => _isRecommending = true);
+    if (mounted) {
+      setState(() => _isRecommending = true);
+    }
 
     try {
       // Initialize enhanced recommendation service
       _enhancedRecommendationService = EnhancedRecommendationService();
       await _enhancedRecommendationService.initialize();
+
+      if (!mounted) return;
 
       // Get dynamic recommendations based on user behavior
       final recommendations = await _enhancedRecommendationService
@@ -210,23 +246,27 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
         final topCategory =
             topRecommendation['category']?.toString().toLowerCase();
 
-        if (topCategory != null && topCategory != _recommendedCategory) {
+        if (topCategory != null && topCategory != _recommendedCategory && mounted) {
           setState(() {
             _recommendedCategory = topCategory;
             _recommendedPlaces = recommendations.take(5).toList();
           });
 
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('last_recommended_category', topCategory);
+          if (mounted) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('last_recommended_category', topCategory);
 
-          print(
-              '✅ Dynamic recommendations updated: $topCategory with ${recommendations.length} places');
+            print(
+                '✅ Dynamic recommendations updated: $topCategory with ${recommendations.length} places');
+          }
         }
       }
     } catch (e) {
       print('❌ Error getting enhanced recommendations: $e');
       // Fallback to basic recommendation if enhanced fails
-      await _fallbackToBasicRecommendation();
+      if (mounted) {
+        await _fallbackToBasicRecommendation();
+      }
     } finally {
       if (mounted) {
         setState(() => _isRecommending = false);
@@ -235,30 +275,43 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   }
 
   Future<void> _fallbackToBasicRecommendation() async {
+    if (!mounted) return;
+    
     try {
-      final behavior =
-          Provider.of<UserBehaviorProvider>(context, listen: false);
+      final enhancedBehavior =
+          Provider.of<EnhancedUserBehaviorProvider>(context, listen: false);
 
-      // Simple fallback logic based on click counts
-      final clickCounts = {
-        'beach': behavior.beachClicks,
-        'historical': behavior.historicalClicks,
-        'cultural': behavior.culturalClicks,
-        'religious': behavior.religiousClicks,
-      };
+      // Use enhanced behavior provider for fallback
+      final categoryInteractions = enhancedBehavior.categoryInteractions;
 
-      final topCategory =
-          clickCounts.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+      if (categoryInteractions.isEmpty) {
+        // No interactions yet, show default beach category
+        if (mounted) {
+          final places = await PlacesService.getPlacesByCategory('beach');
+          if (mounted) {
+            setState(() {
+              _recommendedCategory = 'beach';
+              _recommendedPlaces = places;
+            });
+          }
+        }
+        return;
+      }
+
+      final topCategory = categoryInteractions.entries
+           .reduce((a, b) => a.value > b.value ? a : b).key;
 
       if (topCategory != _recommendedCategory && mounted) {
         final places = await PlacesService.getPlacesByCategory(topCategory);
 
-        setState(() {
-          _recommendedCategory = topCategory;
-          _recommendedPlaces = places;
-        });
+        if (mounted) {
+          setState(() {
+            _recommendedCategory = topCategory;
+            _recommendedPlaces = places;
+          });
 
-        print('✅ Fallback recommendation: $topCategory');
+          print('✅ Fallback recommendation: $topCategory');
+        }
       }
     } catch (e) {
       print('❌ Error in fallback recommendation: $e');
@@ -271,7 +324,9 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
 
     // Start new timer for debounced search
     _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
-      _performSearch(query);
+      if (mounted) {
+        _performSearch(query);
+      }
     });
   }
 
@@ -551,28 +606,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     }
   }
 
-  // Public method for refresh button
-  Future<void> _refreshRecommendations() async {
-    await _refreshEnhancedRecommendations();
-    
-    // Show a brief success message
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Recommendations refreshed!',
-            style: GoogleFonts.poppins(),
-          ),
-          duration: const Duration(seconds: 2),
-          backgroundColor: AppColors.primary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
-    }
-  }
+
 
   String _getRecommendationSubtitle() {
     try {
@@ -728,30 +762,10 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
 
   String _getRecommendationExplanation() {
     try {
-      final behavior =
-          Provider.of<UserBehaviorProvider>(context, listen: false);
-      final totalClicks = behavior.beachClicks +
-          behavior.historicalClicks +
-          behavior.culturalClicks +
-          behavior.religiousClicks;
-
-      if (totalClicks == 0) {
-        return 'Discover amazing places in Somalia';
-      }
-
-      final clickCounts = {
-        'beach': behavior.beachClicks,
-        'historical': behavior.historicalClicks,
-        'cultural': behavior.culturalClicks,
-        'religious': behavior.religiousClicks,
-      };
-
-      final topCategory =
-          clickCounts.entries.reduce((a, b) => a.value > b.value ? a : b);
-
-      final percentage = ((topCategory.value / totalClicks) * 100).round();
-
-      return 'Based on your $percentage% preference for ${topCategory.key} places';
+      final enhancedBehavior =
+          Provider.of<EnhancedUserBehaviorProvider>(context, listen: false);
+      
+      return enhancedBehavior.getRecommendationExplanation();
     } catch (e) {
       return 'Personalized recommendations for you';
     }
@@ -895,11 +909,6 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       // Record interaction with enhanced recommendation service
       await _enhancedRecommendationService.recordPlaceInteraction(
           placeId, category);
-
-      // Also record with user behavior provider for backward compatibility
-      final behavior =
-          Provider.of<UserBehaviorProvider>(context, listen: false);
-      behavior.recordClick(category);
 
       print('✅ Recorded interaction: $placeId in $category');
 
@@ -1081,7 +1090,6 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                 children: [
                   // Top Bar
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(20),
@@ -1109,37 +1117,6 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Refresh Recommendations Button
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: IconButton(
-                              onPressed: _isLoadingEnhancedContent ? null : _refreshRecommendations,
-                              icon: _isLoadingEnhancedContent
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      ),
-                                    )
-                                  : const Icon(
-                                      Icons.refresh,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                              tooltip: 'Refresh Recommendations',
                             ),
                           ),
                         ),

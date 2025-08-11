@@ -7,7 +7,7 @@ import 'package:tourism_app/services/database_helper.dart';
 import 'package:tourism_app/services/payment_service.dart';
 import 'package:tourism_app/services/mock_payment_service.dart';
 import 'package:tourism_app/utils/app_colors.dart';
-import 'package:tourism_app/providers/user_behavior_provider.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'dart:async';
@@ -34,7 +34,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
   bool _isFavorite = false;
   bool _isLoading = false;
   late DateTime _enterTime;
-  UserBehaviorProvider? _userBehaviorProvider;
+
 
   late AnimationController _animationController;
   late AnimationController _favoriteAnimationController;
@@ -109,14 +109,11 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _userBehaviorProvider =
-        Provider.of<UserBehaviorProvider>(context, listen: false);
   }
 
   @override
   void dispose() {
-    final seconds = DateTime.now().difference(_enterTime).inSeconds.toDouble();
-    _userBehaviorProvider?.recordViewTime(seconds, notify: false);
+
     // End enhanced place view tracking
     try {
       Provider.of<EnhancedUserBehaviorProvider>(context, listen: false)
@@ -172,8 +169,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
             _isLoading = false;
           });
 
-          // Record user behavior for recommendation system
-          _userBehaviorProvider?.recordClick(widget.place['category']);
+
           // Enhanced: record quick interaction for favorites toggle
           try {
             final category =

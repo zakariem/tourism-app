@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tourism_app/providers/language_provider.dart';
-import 'package:tourism_app/providers/user_behavior_provider.dart';
+import 'package:tourism_app/providers/enhanced_user_behavior_provider.dart';
 import 'package:tourism_app/utils/app_colors.dart';
 
 class LanguageToggle extends StatelessWidget {
@@ -19,7 +19,7 @@ class LanguageToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final languageProvider = Provider.of<LanguageProvider>(context);
-    final userBehaviorProvider = Provider.of<UserBehaviorProvider>(context);
+    final userBehaviorProvider = Provider.of<EnhancedUserBehaviorProvider>(context);
     final isEnglish = languageProvider.currentLanguage == 'en';
 
     return Material(
@@ -28,7 +28,7 @@ class LanguageToggle extends StatelessWidget {
         onTap: () {
           final newLang = isEnglish ? 'so' : 'en';
           languageProvider.setLanguage(newLang);
-          userBehaviorProvider.setLanguage(newLang);
+          
         },
         borderRadius: BorderRadius.circular(8),
         child: Padding(

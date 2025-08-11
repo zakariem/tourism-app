@@ -1,11 +1,11 @@
 import 'package:tourism_app/services/places_service.dart';
 import 'package:tourism_app/services/favorites_service.dart';
-import 'package:tourism_app/providers/user_behavior_provider.dart';
+import 'package:tourism_app/providers/enhanced_user_behavior_provider.dart';
 import 'package:tourism_app/providers/auth_provider.dart';
 
 class AppStatisticsService {
   static Future<Map<String, dynamic>> getAppStatistics({
-    UserBehaviorProvider? userBehavior,
+    EnhancedUserBehaviorProvider? userBehavior,
     AuthProvider? authProvider,
   }) async {
     try {
@@ -36,17 +36,15 @@ class AppStatisticsService {
       int totalClicks = 0;
       String mostActiveCategory = 'beach';
       if (userBehavior != null) {
-        totalClicks = userBehavior.beachClicks + 
-                     userBehavior.historicalClicks + 
-                     userBehavior.culturalClicks + 
-                     userBehavior.religiousClicks;
+        final categoryInteractions = userBehavior.categoryInteractions;
+        totalClicks = categoryInteractions.values.fold(0, (sum, count) => sum + count);
         
         // Find most active category
         final clickCounts = {
-          'beach': userBehavior.beachClicks,
-          'historical': userBehavior.historicalClicks,
-          'cultural': userBehavior.culturalClicks,
-          'religious': userBehavior.religiousClicks,
+          'beach': categoryInteractions['beach'] ?? 0,
+          'historical': categoryInteractions['historical'] ?? 0,
+          'cultural': categoryInteractions['cultural'] ?? 0,
+          'religious': categoryInteractions['religious'] ?? 0,
         };
         
         mostActiveCategory = clickCounts.entries
@@ -60,8 +58,8 @@ class AppStatisticsService {
         'favoritesCount': favoritesCount,
         'userClicks': totalClicks,
         'mostActiveCategory': mostActiveCategory,
-        'avgViewTime': userBehavior?.avgViewTime ?? 0.0,
-        'viewCount': userBehavior?.viewCount ?? 0,
+        'avgViewTime': 0.0, // Not available in enhanced provider
+        'viewCount': userBehavior?.totalInteractions ?? 0,
         'categories': categories.toList(),
       };
     } catch (e) {

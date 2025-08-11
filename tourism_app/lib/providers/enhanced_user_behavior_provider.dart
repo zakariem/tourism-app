@@ -131,7 +131,7 @@ class EnhancedUserBehaviorProvider extends ChangeNotifier {
     if (forceRefresh || _shouldRefreshRecommendations()) {
       await _refreshRecommendations();
     }
-    return List.from(_cachedRecommendations);
+    return List<Map<String, dynamic>>.from(_cachedRecommendations);
   }
 
   // Get trending places
@@ -139,7 +139,7 @@ class EnhancedUserBehaviorProvider extends ChangeNotifier {
     if (forceRefresh || _shouldRefreshTrending()) {
       await _refreshTrendingPlaces();
     }
-    return List.from(_cachedTrendingPlaces);
+    return List<Map<String, dynamic>>.from(_cachedTrendingPlaces);
   }
 
   // Get user statistics
@@ -274,11 +274,46 @@ class EnhancedUserBehaviorProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       
-      // Save recommendations
-      await prefs.setString('cached_recommendations', json.encode(_cachedRecommendations));
+      // Limit data size to prevent quota exceeded errors - reduce to 3 items
+      final limitedRecommendations = _cachedRecommendations.take(3).map((item) => {
+        'id': item['id']?.toString() ?? '',
+        'name_eng': item['name_eng']?.toString() ?? item['name']?.toString() ?? '',
+        'category': item['category']?.toString() ?? '',
+        'recommendation_score': item['recommendation_score'] ?? 0.0,
+      }).toList();
       
-      // Save trending places
-      await prefs.setString('cached_trending_places', json.encode(_cachedTrendingPlaces));
+      final limitedTrending = _cachedTrendingPlaces.take(3).map((item) => {
+        'id': item['id']?.toString() ?? '',
+        'name_eng': item['name_eng']?.toString() ?? item['name']?.toString() ?? '',
+        'category': item['category']?.toString() ?? '',
+        'trending_score': item['trending_score'] ?? 0.0,
+      }).toList();
+      
+      // Save recommendations with size limit
+      final recommendationsJson = json.encode(limitedRecommendations);
+      if (recommendationsJson.length < 100000) { // 100KB limit for better safety
+        try {
+          await prefs.setString('cached_recommendations', recommendationsJson);
+        } catch (e) {
+          if (e.toString().contains('QuotaExceededError')) {
+            await prefs.remove('cached_recommendations');
+            print('[EnhancedUserBehavior] Cleared recommendations cache due to quota');
+          }
+        }
+      }
+      
+      // Save trending places with size limit
+      final trendingJson = json.encode(limitedTrending);
+      if (trendingJson.length < 100000) { // 100KB limit for better safety
+        try {
+          await prefs.setString('cached_trending_places', trendingJson);
+        } catch (e) {
+          if (e.toString().contains('QuotaExceededError')) {
+            await prefs.remove('cached_trending_places');
+            print('[EnhancedUserBehavior] Cleared trending cache due to quota');
+          }
+        }
+      }
       
       // Save timestamps
       if (_lastRecommendationUpdate != null) {
@@ -288,9 +323,13 @@ class EnhancedUserBehaviorProvider extends ChangeNotifier {
         await prefs.setString('last_trending_update', _lastTrendingUpdate!.toIso8601String());
       }
       
-      print('[EnhancedUserBehavior] Cached recommendations saved');
+      print('[EnhancedUserBehavior] Cached recommendations saved (limited size)');
     } catch (e) {
       print('[EnhancedUserBehavior] Error saving cached recommendations: $e');
+      // If quota exceeded, clear all cache data
+      if (e.toString().contains('QuotaExceededError') || e.toString().contains('quota')) {
+        await _clearAllCache();
+      }
     }
   }
   
@@ -299,34 +338,82 @@ class EnhancedUserBehaviorProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       
-      // Load recommendations
+      // Load recommendations with error handling
       final recommendationsStr = prefs.getString('cached_recommendations');
-      if (recommendationsStr != null) {
-        final decoded = json.decode(recommendationsStr) as List<dynamic>;
-        _cachedRecommendations = decoded.cast<Map<String, dynamic>>();
+      if (recommendationsStr != null && recommendationsStr.isNotEmpty) {
+        try {
+          final decoded = json.decode(recommendationsStr) as List<dynamic>;
+          _cachedRecommendations = decoded.map<Map<String, dynamic>>((item) => 
+            Map<String, dynamic>.from(item as Map)).toList();
+        } catch (decodeError) {
+          print('[EnhancedUserBehavior] Error decoding recommendations, clearing cache: $decodeError');
+          await prefs.remove('cached_recommendations');
+          _cachedRecommendations = [];
+        }
       }
       
-      // Load trending places
+      // Load trending places with error handling
       final trendingStr = prefs.getString('cached_trending_places');
-      if (trendingStr != null) {
-        final decoded = json.decode(trendingStr) as List<dynamic>;
-        _cachedTrendingPlaces = decoded.cast<Map<String, dynamic>>();
+      if (trendingStr != null && trendingStr.isNotEmpty) {
+        try {
+          final decoded = json.decode(trendingStr) as List<dynamic>;
+          _cachedTrendingPlaces = decoded.map<Map<String, dynamic>>((item) => 
+            Map<String, dynamic>.from(item as Map)).toList();
+        } catch (decodeError) {
+          print('[EnhancedUserBehavior] Error decoding trending places, clearing cache: $decodeError');
+          await prefs.remove('cached_trending_places');
+          _cachedTrendingPlaces = [];
+        }
       }
       
-      // Load timestamps
+      // Load timestamps with error handling
       final lastRecommendationStr = prefs.getString('last_recommendation_update');
-      if (lastRecommendationStr != null) {
-        _lastRecommendationUpdate = DateTime.parse(lastRecommendationStr);
+      if (lastRecommendationStr != null && lastRecommendationStr.isNotEmpty) {
+        try {
+          _lastRecommendationUpdate = DateTime.parse(lastRecommendationStr);
+        } catch (parseError) {
+          print('[EnhancedUserBehavior] Error parsing recommendation timestamp: $parseError');
+          await prefs.remove('last_recommendation_update');
+        }
       }
       
       final lastTrendingStr = prefs.getString('last_trending_update');
-      if (lastTrendingStr != null) {
-        _lastTrendingUpdate = DateTime.parse(lastTrendingStr);
+      if (lastTrendingStr != null && lastTrendingStr.isNotEmpty) {
+        try {
+          _lastTrendingUpdate = DateTime.parse(lastTrendingStr);
+        } catch (parseError) {
+          print('[EnhancedUserBehavior] Error parsing trending timestamp: $parseError');
+          await prefs.remove('last_trending_update');
+        }
       }
       
       print('[EnhancedUserBehavior] Cached recommendations loaded: ${_cachedRecommendations.length} recommendations, ${_cachedTrendingPlaces.length} trending');
     } catch (e) {
       print('[EnhancedUserBehavior] Error loading cached recommendations: $e');
+      // Reset cache on any error
+      _cachedRecommendations = [];
+      _cachedTrendingPlaces = [];
+    }
+  }
+
+  // Clear all cached data
+  Future<void> _clearAllCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('cached_recommendations');
+      await prefs.remove('cached_trending_places');
+      await prefs.remove('last_recommendation_update');
+      await prefs.remove('last_trending_update');
+      
+      // Reset in-memory cache
+      _cachedRecommendations = [];
+      _cachedTrendingPlaces = [];
+      _lastRecommendationUpdate = null;
+      _lastTrendingUpdate = null;
+      
+      print('[EnhancedUserBehavior] All cache data cleared due to storage issues');
+    } catch (clearError) {
+      print('[EnhancedUserBehavior] Error clearing all cache: $clearError');
     }
   }
 
